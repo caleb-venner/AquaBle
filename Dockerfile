@@ -34,7 +34,7 @@ FROM python:3.13-slim
 # Install system dependencies for Bluetooth LE support
 RUN apt-get update && apt-get install -y \
     bluez \
-    libglib2.0-0 \
+    libglib2.0-0t64 \
     libdbus-1-3 \
     && rm -rf /var/lib/apt/lists/*
 
