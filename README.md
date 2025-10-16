@@ -1,10 +1,15 @@
-# AquaBle
+# *AquaBle* — pronounced "AK-wuh-bul" (/ˈækwə.bəl/)
 
-aquable: Pronounced "AK-wuh-bul" (/ˈækwə//bəl/)
+![AquaBle icon](aquable-banner.png)
 
-Current project state: in very active development, at a very early stage. Expect further functionality and refinement soon.
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT) [![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/) [![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-teal)](https://fastapi.tiangolo.com/)
 
-Maintained by **Caleb Venner**. This project builds on the open-source work published as [Chihiros LED Control](https://github.com/TheMicDiet/chihiros-led-control) by Michael Dietrich. The original project is licensed under MIT; all redistributions of this codebase continue to honour that license and retain the upstream attribution.
+AquaBle is a lightweight network service to discover and control Chihiros aquarium lights and dosing pumps over Bluetooth Low Energy. It exposes a REST API and a web dashboard for device discovery, command execution, and persistent configuration (schedules, profiles). Deploy as a Docker container, Home Assistant add-on, or install directly with Python.
+
+**Current project state**: in very active development; expect further functionality and refinement soon.
+
+*Built on the open-source [Chihiros LED Control](https://github.com/TheMicDiet/chihiros-led-control) project. Licensed under MIT.*
+
 
 ## Legal Disclaimer
 
@@ -185,14 +190,6 @@ docker run \
   --device /dev/bus/usb \
   aquable
 ```
-
-Containerised BLE access often requires forwarding the host adapter or
-running with elevated capabilities; adjust the `docker run` flags to suit
-your environment.
-
-## Protocol
-
-The vendor app uses Bluetooth LE to communicate with the LED. The LED advertises a UART service with the UUID `6E400001-B5A3-F393-E0A9-E50E24DCCA9E`. This service contains a RX characteristic with the UUID `6E400002-B5A3-F393-E0A9-E50E24DCCA9E`. This characteristic can be used to send commands to the LED. The LED will respond to commands by sending a notification to the corresponding TX service with the UUID `6E400003-B5A3-F393-E0A9-E50E24DCCA9E`.
 
 The commands are sent as a byte array with the following structure:
 
