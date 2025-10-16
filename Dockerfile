@@ -18,7 +18,7 @@ RUN chown -R nodejs:nodejs /app
 USER nodejs
 
 # Install dependencies with clean install (npm ci respects monorepo workspaces)
-RUN npm ci --only=production --ignore-scripts
+RUN npm ci --ignore-scripts
 
 # Copy frontend source
 COPY --chown=nodejs:nodejs frontend/ ./frontend/
@@ -30,7 +30,9 @@ FROM python:3.13-slim
 
 # Install system dependencies for Bluetooth LE support
 RUN apt-get update && apt-get install -y \
-    bluez=5.* \
+    bluez \
+    libglib2.0-0 \
+    libdbus-1-3 \
     && rm -rf /var/lib/apt/lists/*
 
 # Create non-root user
