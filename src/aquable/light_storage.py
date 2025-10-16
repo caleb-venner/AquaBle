@@ -372,7 +372,16 @@ class LightStorage:
             storage_dir: Directory containing individual device files
         """
         self._storage_dir = Path(storage_dir)
-        self._storage_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            self._storage_dir.mkdir(parents=True, exist_ok=True)
+        except PermissionError:
+            import logging
+
+            logger = logging.getLogger(__name__)
+            logger.warning(
+                f"Could not create light storage directory {self._storage_dir}: "
+                "Permission denied. Device storage may not persist."
+            )
         self._metadata_dict = metadata_dict
 
     def _get_device_file(self, device_id: str) -> Path:
@@ -460,11 +469,20 @@ class LightStorage:
         if existing_last_status:
             data["last_status"] = existing_last_status
 
-        tmp_path = device_file.with_suffix(".tmp")
-        tmp_path.write_text(
-            json.dumps(data, indent=2, sort_keys=True), encoding="utf-8"
-        )
-        tmp_path.replace(device_file)
+        try:
+            tmp_path = device_file.with_suffix(".tmp")
+            tmp_path.write_text(
+                json.dumps(data, indent=2, sort_keys=True), encoding="utf-8"
+            )
+            tmp_path.replace(device_file)
+        except PermissionError:
+            import logging
+
+            logger = logging.getLogger(__name__)
+            logger.warning(
+                f"Could not write light device file {device_file}: "
+                "Permission denied. Device will not persist to storage."
+            )
 
     def list_devices(self) -> list[LightDevice]:
         """Return all persisted light devices."""

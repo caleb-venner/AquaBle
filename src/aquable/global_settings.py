@@ -44,15 +44,28 @@ class GlobalSettings:
 
     def _save_settings(self) -> None:
         """Save settings to file."""
-        self._config_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            self._config_dir.mkdir(parents=True, exist_ok=True)
+        except PermissionError:
+            logger.warning(
+                f"Could not create settings directory {self._config_dir}: "
+                "Permission denied. Settings will not persist."
+            )
+            return
 
-        tmp_file = self._settings_file.with_suffix(".tmp")
-        tmp_file.write_text(
-            json.dumps(self._settings, indent=2, sort_keys=True),
-            encoding="utf-8",
-        )
-        tmp_file.replace(self._settings_file)
-        logger.debug(f"Saved global settings to {self._settings_file}")
+        try:
+            tmp_file = self._settings_file.with_suffix(".tmp")
+            tmp_file.write_text(
+                json.dumps(self._settings, indent=2, sort_keys=True),
+                encoding="utf-8",
+            )
+            tmp_file.replace(self._settings_file)
+            logger.debug(f"Saved global settings to {self._settings_file}")
+        except PermissionError:
+            logger.warning(
+                f"Could not write settings file {self._settings_file}: "
+                "Permission denied. Settings will not persist."
+            )
 
     def get_display_timezone(self) -> str | None:
         """Get the display timezone setting.

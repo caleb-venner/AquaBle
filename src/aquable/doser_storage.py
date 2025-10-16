@@ -362,7 +362,16 @@ class DoserStorage:
         self._metadata_dict = metadata_dict
 
         # Ensure the directory exists
-        self._base_path.mkdir(parents=True, exist_ok=True)
+        try:
+            self._base_path.mkdir(parents=True, exist_ok=True)
+        except PermissionError:
+            import logging
+
+            logger = logging.getLogger(__name__)
+            logger.warning(
+                f"Could not create doser storage directory {self._base_path}: "
+                "Permission denied. Device storage may not persist."
+            )
 
     def _get_device_file_path(self, device_id: str) -> Path:
         """Get the file path for a specific device."""
@@ -415,7 +424,17 @@ class DoserStorage:
 
         Preserves existing last_status if present in the file.
         """
-        device_file.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            device_file.parent.mkdir(parents=True, exist_ok=True)
+        except PermissionError:
+            import logging
+
+            logger = logging.getLogger(__name__)
+            logger.warning(
+                f"Could not create directory for doser file {device_file}: "
+                "Permission denied. Device will not persist to storage."
+            )
+            return
 
         # Read existing file to preserve last_status
         existing_last_status = None
@@ -445,11 +464,20 @@ class DoserStorage:
         if existing_last_status:
             data["last_status"] = existing_last_status
 
-        tmp_file = device_file.with_suffix(".tmp")
-        tmp_file.write_text(
-            json.dumps(data, indent=2, sort_keys=True), encoding="utf-8"
-        )
-        tmp_file.replace(device_file)
+        try:
+            tmp_file = device_file.with_suffix(".tmp")
+            tmp_file.write_text(
+                json.dumps(data, indent=2, sort_keys=True), encoding="utf-8"
+            )
+            tmp_file.replace(device_file)
+        except PermissionError:
+            import logging
+
+            logger = logging.getLogger(__name__)
+            logger.warning(
+                f"Could not write doser file {device_file}: "
+                "Permission denied. Device will not persist to storage."
+            )
 
     def _list_device_files(self) -> list[Path]:
         """List all device JSON files in the storage directory.
