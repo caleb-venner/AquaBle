@@ -48,6 +48,8 @@ COPY --chown=appuser:appuser src/ ./src/
 COPY --chown=appuser:appuser pyproject.toml README.md ./
 
 # Install Python dependencies
+# Set version for setuptools-scm since .git is not in build context
+ENV SETUPTOOLS_SCM_PRETEND_VERSION=2.0.0
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir .
 
