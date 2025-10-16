@@ -17,8 +17,11 @@ RUN chown -R nodejs:nodejs /app
 # Switch to non-root user
 USER nodejs
 
-# Install dependencies with clean install (npm ci respects monorepo workspaces)
-RUN npm ci --ignore-scripts
+# Install dependencies (workaround for npm optional deps bug with Rollup)
+# See: https://github.com/npm/cli/issues/4828
+RUN rm -f package-lock.json && \
+    npm install && \
+    npm cache clean --force
 
 # Copy frontend source
 COPY --chown=nodejs:nodejs frontend/ ./frontend/
