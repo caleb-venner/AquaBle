@@ -57,13 +57,7 @@ RUN pip install --no-cache-dir --upgrade pip && \
 # Copy built frontend from previous stage
 COPY --from=frontend-build --chown=appuser:appuser /app/frontend/dist ./frontend/dist
 
-# Create data directory structure with proper permissions for appuser
-# This MUST be done before switching to appuser
-RUN mkdir -p /data/devices && \
-    chown -R appuser:appuser /data && \
-    chmod 755 /data
-
-# Switch to non-root user AFTER all installs and directory creation
+# Switch to non-root user AFTER all installs
 USER appuser
 
 # Set environment variable for frontend location

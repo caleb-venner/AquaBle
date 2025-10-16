@@ -85,7 +85,19 @@ class UnifiedDeviceStorage:
     def __init__(self, devices_dir: Path | str):
         """Initialize storage with the devices directory."""
         self._devices_dir = Path(devices_dir)
-        self._devices_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            self._devices_dir.mkdir(parents=True, exist_ok=True)
+        except PermissionError:
+            # On some systems (e.g., Unraid), the mounted volume may be read-only
+            # or have restrictive permissions. Log a warning but continue.
+            # Device files will be stored in memory or fallback gracefully.
+            import logging
+
+            logger = logging.getLogger(__name__)
+            logger.warning(
+                f"Could not create devices directory {self._devices_dir}: "
+                "Permission denied. Device storage may not persist."
+            )
 
     def _get_device_file_path(self, device_id: str) -> Path:
         """Get the file path for a specific device."""
@@ -122,20 +134,40 @@ class UnifiedDeviceStorage:
     ) -> None:
         """Write a unified device file atomically."""
         device_file = self._get_device_file_path(device.device_id)
-        device_file.parent.mkdir(parents=True, exist_ok=True)
+
+        try:
+            device_file.parent.mkdir(parents=True, exist_ok=True)
+        except PermissionError:
+            import logging
+
+            logger = logging.getLogger(__name__)
+            logger.warning(
+                f"Could not create directory for device file {device_file}: "
+                "Permission denied. Device will not persist to storage."
+            )
+            return
 
         # Update timestamp
         device.last_updated = now_iso()
 
         # Write atomically
-        tmp_file = device_file.with_suffix(".tmp")
-        tmp_file.write_text(
-            json.dumps(
-                device.model_dump(mode="json"), indent=2, sort_keys=True
-            ),
-            encoding="utf-8",
-        )
-        tmp_file.replace(device_file)
+        try:
+            tmp_file = device_file.with_suffix(".tmp")
+            tmp_file.write_text(
+                json.dumps(
+                    device.model_dump(mode="json"), indent=2, sort_keys=True
+                ),
+                encoding="utf-8",
+            )
+            tmp_file.replace(device_file)
+        except PermissionError:
+            import logging
+
+            logger = logging.getLogger(__name__)
+            logger.warning(
+                f"Could not write device file {device_file}: "
+                "Permission denied. Device will not persist to storage."
+            )
 
     def update_status(
         self,
