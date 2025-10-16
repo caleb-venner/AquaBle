@@ -47,16 +47,17 @@ WORKDIR /app
 COPY --chown=appuser:appuser src/ ./src/
 COPY --chown=appuser:appuser pyproject.toml README.md ./
 
-# Install Python dependencies
+# Install Python dependencies AS ROOT (before switching user)
 # Set version for setuptools-scm since .git is not in build context
 ENV SETUPTOOLS_SCM_PRETEND_VERSION=2.0.0
 RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir .
+    pip install --no-cache-dir . && \
+    pip list | grep -i uvicorn  # Verify installation
 
 # Copy built frontend from previous stage
 COPY --from=frontend-build --chown=appuser:appuser /app/frontend/dist ./frontend/dist
 
-# Switch to non-root user
+# Switch to non-root user AFTER all installs
 USER appuser
 
 # Set environment variable for frontend location
