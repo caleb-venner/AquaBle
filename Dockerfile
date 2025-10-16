@@ -11,6 +11,9 @@ WORKDIR /app
 COPY --chown=nodejs:nodejs package.json package-lock.json ./
 COPY --chown=nodejs:nodejs frontend/package.json ./frontend/
 
+# Ensure /app directory is owned by nodejs user
+RUN chown -R nodejs:nodejs /app
+
 # Switch to non-root user
 USER nodejs
 
