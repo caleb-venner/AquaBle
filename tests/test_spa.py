@@ -25,7 +25,7 @@ def test_root_reports_missing_spa(
 
     response = asyncio.run(serve_spa())
     assert response.status_code == 503
-    assert SPA_UNAVAILABLE_MESSAGE in response.body.decode()
+    assert SPA_UNAVAILABLE_MESSAGE in response.body.decode()  # type: ignore
 
 
 def test_root_serves_spa_when_dist_present(
@@ -38,7 +38,7 @@ def test_root_serves_spa_when_dist_present(
     monkeypatch.setattr("aquable.service.FRONTEND_DIST", tmp_path)
     response = asyncio.run(serve_spa())
     assert response.status_code == 200
-    assert "spa" in response.body.decode()
+    assert "spa" in response.body.decode()  # type: ignore
 
 
 def test_spa_asset_route_serves_static_file(
@@ -66,7 +66,7 @@ def test_spa_asset_route_returns_index_for_client_paths(
 
     response = asyncio.run(serve_spa_assets("dashboard"))
     assert response.status_code == 200
-    assert "spa" in response.body.decode()
+    assert "spa" in response.body.decode()  # type: ignore
 
 
 def test_spa_asset_route_404_for_missing_files(
