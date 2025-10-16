@@ -26,8 +26,10 @@ jobs:
           cache: 'npm'
           cache-dependency-path: package-lock.json
 
-      - name: Install dependencies
-        run: npm install
+      - name: Clean and Reinstall Dependencies
+        run: |
+          rm -rf node_modules package-lock.json
+          npm install
 
       - name: Build frontend
         run: npm run build
