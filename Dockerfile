@@ -5,22 +5,23 @@ RUN apk update && apk upgrade
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs && adduser -S nodejs -u 1001
 
-WORKDIR /app/frontend
+WORKDIR /app
 
-# Copy package files
-COPY --chown=nodejs:nodejs frontend/package.json frontend/package-lock.json ./
+# Copy package files from repo root (monorepo structure)
+COPY --chown=nodejs:nodejs package.json package-lock.json ./
+COPY --chown=nodejs:nodejs frontend/package.json ./frontend/
 
 # Switch to non-root user
 USER nodejs
 
-# Install dependencies with clean install
+# Install dependencies with clean install (npm ci respects monorepo workspaces)
 RUN npm ci --only=production --ignore-scripts
 
 # Copy frontend source
-COPY --chown=nodejs:nodejs frontend/ ./
+COPY --chown=nodejs:nodejs frontend/ ./frontend/
 
 # Build the frontend
-RUN npm run build
+RUN npm run build --workspace=frontend
 
 FROM python:3.13-slim
 
