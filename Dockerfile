@@ -5,10 +5,10 @@ RUN apk update && apk upgrade
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs && adduser -S nodejs -u 1001
 
-WORKDIR /app/web
+WORKDIR /app/frontend
 
-# Copy package files (ensure package-lock.json exists)
-COPY --chown=nodejs:nodejs web/package.json web/package-lock.json ./
+# Copy package files
+COPY --chown=nodejs:nodejs frontend/package.json frontend/package-lock.json ./
 
 # Switch to non-root user
 USER nodejs
@@ -17,7 +17,7 @@ USER nodejs
 RUN npm ci --only=production --ignore-scripts
 
 # Copy frontend source
-COPY --chown=nodejs:nodejs web/ ./
+COPY --chown=nodejs:nodejs frontend/ ./
 
 # Build the frontend
 RUN npm run build
@@ -43,13 +43,13 @@ RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir .
 
 # Copy built frontend from previous stage
-COPY --from=frontend-build --chown=appuser:appuser /app/web/dist ./web/dist
+COPY --from=frontend-build --chown=appuser:appuser /app/frontend/dist ./frontend/dist
 
 # Switch to non-root user
 USER appuser
 
 # Set environment variable for frontend location
-ENV AQUA_BLE_FRONTEND_DIST=/app/web/dist
+ENV AQUA_BLE_FRONTEND_DIST=/app/frontend/dist
 
 # Expose the service port
 EXPOSE 8000
