@@ -26,8 +26,11 @@ jobs:
         with:
           node-version: '18'
 
-      - name: Install Dependencies
-        run: npm ci
+      - name: Install Dependencies (workaround for npm optional deps bug)
+        run: |
+          rm -rf node_modules package-lock.json
+          npm install
+          git checkout package-lock.json
 
       - name: Build frontend
         run: npm run build
