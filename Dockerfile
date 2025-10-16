@@ -52,7 +52,7 @@ COPY --chown=appuser:appuser pyproject.toml README.md ./
 ENV SETUPTOOLS_SCM_PRETEND_VERSION=2.0.0
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir . && \
-    pip list | grep -i uvicorn  # Verify installation
+    python -c "import uvicorn; print(f'✓ uvicorn {uvicorn.__version__} installed')"
 
 # Copy built frontend from previous stage
 COPY --from=frontend-build --chown=appuser:appuser /app/frontend/dist ./frontend/dist
