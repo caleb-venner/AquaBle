@@ -1,4 +1,4 @@
-# *AquaBle* — pronounced "AK-wuh-bul" (/ˈækwə.bəl/)
+# AquaBle — *pronounced "AK-wuh-bul" (/ˈækwə.bəl/)*
 
 ![AquaBle icon](aquable-banner.png)
 
