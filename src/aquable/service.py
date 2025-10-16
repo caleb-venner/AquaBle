@@ -81,8 +81,7 @@ async def health_check():
 SPA_UNAVAILABLE_MESSAGE = getattr(spa, "SPA_UNAVAILABLE_MESSAGE")
 SPA_DIST_AVAILABLE = getattr(spa, "SPA_DIST_AVAILABLE")
 FRONTEND_DIST = getattr(spa, "FRONTEND_DIST")
-PRIMARY_ENTRY = getattr(spa, "PRIMARY_ENTRY", "modern.html")
-LEGACY_ENTRY = getattr(spa, "LEGACY_ENTRY", "index.html")
+PRIMARY_ENTRY = getattr(spa, "PRIMARY_ENTRY", "index.html")
 
 
 async def _proxy_dev_server(path: str) -> Response | None:
@@ -101,9 +100,6 @@ async def serve_spa() -> Response:
         primary_path = FRONTEND_DIST / PRIMARY_ENTRY
         if primary_path.exists():
             return HTMLResponse(primary_path.read_text(encoding="utf-8"))
-        legacy_path = FRONTEND_DIST / LEGACY_ENTRY
-        if legacy_path.exists():
-            return HTMLResponse(legacy_path.read_text(encoding="utf-8"))
     proxied = await _proxy_dev_server(f"/{PRIMARY_ENTRY}")
     if proxied is not None:
         return proxied
@@ -157,9 +153,6 @@ async def serve_spa_assets(spa_path: str) -> Response:
     primary_path = FRONTEND_DIST / PRIMARY_ENTRY
     if primary_path.exists():
         return HTMLResponse(primary_path.read_text(encoding="utf-8"))
-    legacy_path = FRONTEND_DIST / LEGACY_ENTRY
-    if legacy_path.exists():
-        return HTMLResponse(legacy_path.read_text(encoding="utf-8"))
     raise HTTPException(status_code=404)
 
 

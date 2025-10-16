@@ -20,8 +20,8 @@ FRONTEND_DIST = Path(
 )
 SPA_DIST_AVAILABLE = FRONTEND_DIST.exists()
 
-PRIMARY_ENTRY = "modern.html"
-LEGACY_ENTRY = "index.html"
+# Standard SPA entry point (what Vite builds)
+PRIMARY_ENTRY = "index.html"
 
 SPA_UNAVAILABLE_MESSAGE = (
     "The TypeScript dashboard is unavailable. "
@@ -79,7 +79,7 @@ def _read_entry(name: str) -> HTMLResponse | None:
 async def serve_index_or_proxy() -> Response:
     """Serve built index.html or proxy to a running dev server."""
     if SPA_DIST_AVAILABLE:
-        entry_response = _read_entry(PRIMARY_ENTRY) or _read_entry(LEGACY_ENTRY)
+        entry_response = _read_entry(PRIMARY_ENTRY)
         if entry_response is not None:
             return entry_response
     proxied = await _proxy_dev_server(f"/{PRIMARY_ENTRY}")
@@ -124,7 +124,8 @@ async def serve_spa_asset(spa_path: str) -> Response:
     if "." in spa_path:
         raise HTTPException(status_code=404)
 
-    entry_response = _read_entry(PRIMARY_ENTRY) or _read_entry(LEGACY_ENTRY)
+    # Client-side route: serve SPA entry point
+    entry_response = _read_entry(PRIMARY_ENTRY)
     if entry_response is not None:
         return entry_response
 

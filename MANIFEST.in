@@ -1,0 +1,17 @@
+# Include frontend build artifacts in the Python package
+recursive-include frontend/dist *
+recursive-include frontend/dist/assets *
+include frontend/dist/index.html
+include frontend/dist/*.html
+
+# Include documentation
+include README.md
+include LICENSE
+
+# Exclude development and test files
+recursive-exclude * __pycache__
+recursive-exclude * *.py[co]
+recursive-exclude * .DS_Store
+exclude frontend/node_modules
+exclude frontend/src
+exclude frontend/tests

@@ -29,6 +29,12 @@ where = [
   "src",
 ]
 
+[tool.setuptools.package-data]
+aquable = [
+  "../frontend/dist/**/*",
+  "../frontend/dist/assets/**/*",
+]
+
 [tool.setuptools_scm]
 
 [project.scripts]

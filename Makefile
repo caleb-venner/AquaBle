@@ -16,6 +16,8 @@ help:
 	@echo "make test       # run pytest"
 	@echo "make precommit  # install and run pre-commit hooks"
 	@echo "make clean      # delete all saved device state and configs"
+	@echo "make clean-build# delete build artifacts (dist, node_modules, etc)"
+	@echo "make clean-all  # clean + clean-build"
 	@echo "make clean-dev  # clean then start dev servers"
 
 VENV?=.venv
@@ -84,6 +86,13 @@ clean:
 	else \
 		echo "✨ Already clean: No $$HOME/.aquable directory found"; \
 	fi
+
+clean-build:
+	@echo "🧹 Cleaning build artifacts..."
+	@rm -rf frontend/dist/ frontend/node_modules/ dist/ build/ *.egg-info/
+	@echo "✅ Build artifacts cleaned"
+
+clean-all: clean clean-build
 
 # Convenience target: clean then dev
 clean-dev: clean dev
