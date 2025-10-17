@@ -21,7 +21,8 @@ RUN apk add --no-cache \
     npm \
     gcc \
     musl-dev \
-    linux-headers
+    linux-headers \
+    wget
 
 # Set working directory
 WORKDIR /app

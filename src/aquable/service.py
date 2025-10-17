@@ -11,6 +11,7 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, Response
 
 # Ensure the implementation module picks up any env override when this
@@ -49,6 +50,15 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Aquarium BLE Service", lifespan=lifespan)
+
+# Add CORS middleware for frontend development
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 # Health check endpoint for container monitoring

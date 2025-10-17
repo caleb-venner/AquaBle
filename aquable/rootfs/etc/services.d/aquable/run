@@ -40,6 +40,12 @@ if ! command -v hciconfig &> /dev/null; then
     bashio::log.warning "Bluetooth tools not found, some functionality may be limited"
 else
     bashio::log.info "Bluetooth available"
+    # Start Bluetooth service if not already running
+    if ! pgrep -f "bluetoothd" > /dev/null; then
+        bashio::log.info "Starting Bluetooth service..."
+        bluetoothd --compat &
+        sleep 2
+    fi
 fi
 
 # Log startup information
@@ -49,9 +55,47 @@ bashio::log.info "Auto-discover: ${AUTO_DISCOVER}"
 bashio::log.info "Status wait: ${STATUS_WAIT}s"
 bashio::log.info "Config directory: ${AQUA_BLE_CONFIG_DIR}"
 
+# Ensure config directory exists and is writable
+if [ ! -d "${AQUA_BLE_CONFIG_DIR}" ]; then
+    bashio::log.info "Creating config directory: ${AQUA_BLE_CONFIG_DIR}"
+    mkdir -p "${AQUA_BLE_CONFIG_DIR}" || bashio::log.error "Failed to create config directory"
+fi
+
+if [ ! -w "${AQUA_BLE_CONFIG_DIR}" ]; then
+    bashio::log.error "Config directory is not writable: ${AQUA_BLE_CONFIG_DIR}"
+else
+    bashio::log.info "Config directory is writable"
+fi
+
+# Log environment variables for debugging
+bashio::log.info "Environment variables:"
+bashio::log.info "  AQUA_BLE_AUTO_RECONNECT=${AQUA_BLE_AUTO_RECONNECT}"
+bashio::log.info "  AQUA_BLE_AUTO_DISCOVER=${AQUA_BLE_AUTO_DISCOVER}"
+bashio::log.info "  AQUA_BLE_STATUS_WAIT=${AQUA_BLE_STATUS_WAIT}"
+bashio::log.info "  AQUA_BLE_DISPLAY_TIMEZONE=${AQUA_BLE_DISPLAY_TIMEZONE}"
+bashio::log.info "  AQUA_BLE_CONFIG_DIR=${AQUA_BLE_CONFIG_DIR}"
+bashio::log.info "  AQUA_BLE_FRONTEND_DIST=${AQUA_BLE_FRONTEND_DIST}"
+
+# Check if frontend is built
+if [ -d "${AQUA_BLE_FRONTEND_DIST}" ] && [ -f "${AQUA_BLE_FRONTEND_DIST}/index.html" ]; then
+    bashio::log.info "Frontend build found at ${AQUA_BLE_FRONTEND_DIST}"
+else
+    bashio::log.error "Frontend build not found at ${AQUA_BLE_FRONTEND_DIST}"
+fi
+
 # Start the service
 bashio::log.info "Launching uvicorn on port 8000..."
+
+# Test Python import before starting
+if ! python3 -c "import aquable.service; print('Python import successful')" 2>&1; then
+    bashio::log.error "Failed to import aquable.service"
+    exit 1
+fi
+
+bashio::log.info "Python import successful, starting service..."
+
 exec python3 -m uvicorn aquable.service:app \
     --host "${AQUA_BLE_SERVICE_HOST}" \
     --port "${AQUA_BLE_SERVICE_PORT}" \
-    --no-access-log
+    --no-access-log \
+    --log-level info
