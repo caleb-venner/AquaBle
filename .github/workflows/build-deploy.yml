@@ -58,9 +58,6 @@ jobs:
       - name: Prepare add-on build context
         run: mkdir -p hassio/frontend && cp -r frontend/dist hassio/frontend/
 
-      - name: Copy add-on configuration files
-        run: cp hassio/config.json . && cp hassio/build.json .
-
       - name: Log in to Container Registry
         uses: docker/login-action@v3
         with:
