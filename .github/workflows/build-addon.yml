@@ -42,4 +42,5 @@ jobs:
           args: |
             --all \
             --target hassio \
-            --docker-hub ghcr.io/${{ github.repository_owner }}
+            --docker-hub ghcr.io/${{ github.repository_owner }} \
+            --no-latest
