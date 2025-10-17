@@ -7,23 +7,17 @@ FROM ${BUILD_FROM}
 # Set shell
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
-# Install system dependencies for Bluetooth and Python
+# Install system dependencies for Bluetooth and Node.js
+# Python is already included in the base image
 RUN apk add --no-cache \
     bluez \
     bluez-deprecated \
     dbus \
-    python3 \
-    py3-pip \
     nodejs \
     npm \
-    build-base \
-    python3-dev \
-    linux-headers \
-    eudev-dev \
-    libffi-dev \
-    openssl-dev \
-    cargo \
-    rust
+    gcc \
+    musl-dev \
+    linux-headers
 
 # Set working directory
 WORKDIR /app
@@ -45,8 +39,8 @@ RUN if [ -f package-lock.json ] || [ -f npm-shrinkwrap.json ]; then \
 
 # Install Python package
 WORKDIR /app
-RUN pip3 install --no-cache-dir --upgrade pip setuptools wheel && \
-    pip3 install --no-cache-dir -e .
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
+    pip install --no-cache-dir -e .
 
 # Environment variables
 ENV PYTHONPATH=/app/src
