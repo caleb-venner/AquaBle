@@ -27,6 +27,12 @@ $(VENV)/bin/activate:
 	$(PY) -m venv $(VENV)
 	. $(VENV)/bin/activate; pip install -U pip
 
+hassio:
+	@echo "Running local add-on build (override DOCKER_USER and ADDON_VERSION if needed)"
+	@DOCKER_USER=${DOCKER_USER:-$(shell whoami)} \
+		ADDON_VERSION=${ADDON_VERSION:-dev} \
+		./scripts/build_addon_local.sh
+
 # Frontend
 
 dev-front:
