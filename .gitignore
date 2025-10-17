@@ -179,3 +179,6 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 aquable.code-workspace
+
+# Home Assistant add-on build artifacts
+hassio/build/

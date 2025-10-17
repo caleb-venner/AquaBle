@@ -18,6 +18,17 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Prepare add-on build context
+        run: scripts/prepare_addon_context.sh
+
+      - name: Debug add-on build context
+        run: |
+          echo "Repository root contents:" && ls -a
+          echo "hassio directory contents:" && ls -a hassio
+          echo "hassio/build directory contents (top level):" && ls -a hassio/build
 
       - name: Get version from tag
         id: version

@@ -28,10 +28,10 @@ RUN apk add --no-cache \
 # Set working directory
 WORKDIR /app
 
-# Copy project files
-COPY pyproject.toml setup.cfg MANIFEST.in ./
-COPY src/ src/
-COPY frontend/ frontend/
+# Copy project files prepared in build context
+COPY build/pyproject.toml build/setup.cfg build/MANIFEST.in ./
+COPY build/src/ src/
+COPY build/frontend/ frontend/
 
 # Build frontend
 WORKDIR /app/frontend
