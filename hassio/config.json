@@ -4,7 +4,7 @@
   "slug": "aquable",
   "description": "Control Chihiros aquarium lights and dosing pumps over Bluetooth Low Energy",
   "url": "https://github.com/caleb-venner/aquable",
-  "arch": ["armhf", "armv7", "aarch64", "amd64", "i386"],
+  "arch": ["armhf", "armv7", "aarch64", "amd64"],
   "startup": "application",
   "boot": "auto",
   "init": false,
