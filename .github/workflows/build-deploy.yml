@@ -22,9 +22,11 @@ jobs:
         with:
           node-version: '18'
 
-      - name: Install frontend dependencies
-        working-directory: frontend
-        run: npm install
+      - name: Install Dependencies (workaround for npm optional deps bug)
+        run: |
+          cd frontend
+          rm -rf node_modules package-lock.json
+          npm install
 
       - name: Build frontend
         working-directory: frontend
