@@ -29,9 +29,9 @@ RUN apk add --no-cache \
 WORKDIR /app
 
 # Copy project files
-COPY ../pyproject.toml ../setup.cfg ../MANIFEST.in ./
-COPY ../src/ src/
-COPY ../frontend/ frontend/
+COPY pyproject.toml setup.cfg MANIFEST.in ./
+COPY src/ src/
+COPY frontend/ frontend/
 
 # Build frontend
 WORKDIR /app/frontend
@@ -50,7 +50,7 @@ ENV AQUA_BLE_SERVICE_HOST=0.0.0.0
 ENV AQUA_BLE_SERVICE_PORT=8000
 
 # Copy run script
-COPY run.sh /
+COPY hassio/run.sh /
 RUN chmod a+x /run.sh
 
 # Expose port
