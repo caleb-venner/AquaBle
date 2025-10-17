@@ -39,20 +39,37 @@ sudo ln -s /path/to/aquable/hassio /usr/share/hassio/addons/local/aquable
 
 ## Building Multi-Architecture Images
 
-Home Assistant supports multiple architectures. To build for all platforms:
+Home Assistant supports multiple architectures. To build for all platforms locally:
 
 ```bash
-# Install Home Assistant Builder
-docker pull homeassistant/amd64-builder
-
-# Build all architectures
-docker run --rm --privileged \
-  -v /path/to/aquable:/data \
-  homeassistant/amd64-builder \
-  --all -t hassio
+# From the repository root
+DOCKER_USER=my-gh-username ADDON_VERSION=dev \
+  scripts/build_addon_local.sh
 ```
 
-Or use the GitHub Actions workflow (`.github/workflows/build-addon.yml`) which builds automatically on push.
+The script performs:
+
+- `npm ci && npm run build` inside `frontend/`
+- `scripts/prepare_addon_context.sh` to stage the `hassio/build` directory
+- Runs the Home Assistant builder container (`ghcr.io/home-assistant/amd64-builder:latest`)
+
+Environment variables:
+
+- `DOCKER_USER` (required for pushed image names, defaults to local user)
+- `ADDON_VERSION` (defaults to `dev`; set to a semantic version to mirror releases)
+- `PUSH_IMAGES=true` to push images instead of performing a dry run
+
+If you prefer the raw docker command:
+
+```bash
+docker run --rm --privileged \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  -v /path/to/aquable:/data \
+  ghcr.io/home-assistant/amd64-builder:latest \
+  --all --target hassio --docker-hub ghcr.io/my-gh-username --image aquable --version dev --no-latest --no-push
+```
+
+The GitHub Actions workflow (`.github/workflows/build-addon.yml`) performs the same steps automatically on push.
 
 ## Publishing to Repository
 
@@ -77,8 +94,8 @@ If you have a Home Assistant add-ons repository:
 }
 ```
 
-3. Add the `hassio/` contents as `aquable/` directory
-4. Users can add your repository URL in Home Assistant
+1. Add the `hassio/` contents as `aquable/` directory
+2. Users can add your repository URL in Home Assistant
 
 ### Option 3: Submit to official Home Assistant add-ons
 
@@ -108,6 +125,7 @@ The add-on supports these configuration options (defined in `config.json`):
 - `timezone` (string): Display timezone for schedules
 
 These map to environment variables:
+
 - `AQUA_BLE_AUTO_RECONNECT`
 - `AQUA_BLE_AUTO_DISCOVER`
 - `AQUA_BLE_STATUS_WAIT`
@@ -116,15 +134,18 @@ These map to environment variables:
 ## Debugging
 
 View add-on logs in Home Assistant:
+
 1. Go to **Supervisor** → **AquaBle**
 2. Click the **Log** tab
 
 Or use CLI:
+
 ```bash
 ha addons logs aquable
 ```
 
 Connect to add-on container:
+
 ```bash
 docker exec -it addon_local_aquable /bin/bash
 ```
