@@ -55,6 +55,9 @@ jobs:
           name: frontend-dist
           path: frontend/dist/
 
+      - name: Copy add-on configuration files
+        run: cp hassio/config.json . && cp hassio/build.json .
+
       - name: Log in to Container Registry
         uses: docker/login-action@v3
         with:
