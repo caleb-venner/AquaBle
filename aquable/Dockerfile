@@ -56,6 +56,9 @@ ENV AQUA_BLE_SERVICE_PORT=8000
 # Copy root filesystem
 COPY rootfs /
 
+# Ensure service scripts are executable
+RUN chmod +x /etc/services.d/aquable/run /etc/services.d/aquable/finish
+
 # Expose port
 EXPOSE 8000
 
