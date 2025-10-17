@@ -47,5 +47,6 @@ fi
 
 # Start the application
 bashio::log.info "Starting AquaBle service..."
-cd /app
-exec python -m aquable.service
+exec python -m uvicorn aquable.service:app \
+    --host "${service_host}" \
+    --port "${service_port}"

@@ -2,34 +2,54 @@
 
 Manage your Chihiros aquarium devices (dosers, lights) directly from Home Assistant via Bluetooth LE.
 
+## About
+
+AquaBle is a Home Assistant add-on that provides comprehensive control of Chihiros aquarium devices over Bluetooth LE:
+
+- **Doser Pumps**: Monitor and control dosing schedules, track lifetime totals
+- **LED Lights**: Control color channels, brightness, and lighting schedules
+- **Status Monitoring**: Real-time device status, battery levels, error reporting
+- **Device Management**: Scan, connect, and manage multiple devices
+
+## Features
+
+✅ **Multi-device support** - Control multiple dosers and lights simultaneously
+✅ **Persistent configurations** - Device settings saved locally
+✅ **Web interface** - Built-in dashboard at `http://homeassistant.local:8000`
+✅ **REST API** - Full API for automation and integrations
+✅ **Auto-reconnect** - Automatically reconnect to cached devices on startup
+✅ **Status caching** - Real-time device status updates
+
 ## Installation
 
-### Method 1: Add-on Store (Future)
-*Coming soon to the official Home Assistant Add-on Store*
+### Prerequisites
 
-### Method 2: Manual Installation
+- Home Assistant 2024.1 or later
+- Bluetooth adapter (supported by Home Assistant)
+- Chihiros device with Bluetooth
 
-1. **Add custom repository:**
-   - Go to **Supervisor** → **Add-on Store** → **⋮** → **Repositories**
-   - Add: `https://github.com/caleb-venner/aquable-addons`
+### Method 1: Official Add-on Store (Coming Soon)
 
-2. **Install the add-on:**
-   - Find "AquaBle" in the store
-   - Click **Install**
+Once available, install directly from **Settings** → **Add-ons & Backups** → **Add-on Store**
 
-### Method 3: Local Development
+### Method 2: Custom Repository
 
-1. **Copy to add-ons directory:**
+1. Go to **Settings** → **Add-ons & Backups** → **Add-on Store** → **⋮**
+2. Select **Repositories**
+3. Add: `https://github.com/caleb-venner/aquable-addons`
+4. Search for **AquaBle** in the Add-on Store
+5. Click **Install**
+
+### Method 3: Manual Installation (Development)
+
 ```bash
-# On your HA system
-cd /usr/share/hassio/addons/local/
+ssh root@homeassistant.local
+cd /usr/share/hassio/addons/local
 git clone https://github.com/caleb-venner/aquable.git
-# Copy hassio/ contents to a new addon directory
-cp -r aquable/hassio/ aquable-addon/
+cp -r aquable/hassio/ ./aquable-addon/
 ```
 
-2. **Reload add-ons:**
-   - Go to **Supervisor** → **Add-on Store** → **⋮** → **Reload**
+Then in Home Assistant UI: **Settings** → **Add-ons & Backups** → **⋮** → **Reload**
 
 ## Configuration
 
@@ -47,96 +67,105 @@ service_port: 8000
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `log_level` | string | `INFO` | Logging verbosity |
-| `auto_discover` | boolean | `false` | Auto-discover devices on startup |
+| `log_level` | string | `INFO` | Logging level (TRACE/DEBUG/INFO/WARNING/ERROR/CRITICAL) |
+| `auto_discover` | boolean | `false` | Auto-scan for devices on startup |
 | `auto_reconnect` | boolean | `true` | Reconnect to cached devices |
-| `service_host` | string | `0.0.0.0` | Service bind address |
-| `service_port` | integer | `8000` | Web interface port |
-
-### Log Levels
-- `TRACE`: Extremely verbose debugging
-- `DEBUG`: Detailed debugging information
-- `INFO`: General information (recommended)
-- `WARNING`: Warning messages only
-- `ERROR`: Error messages only
-- `CRITICAL`: Critical errors only
+| `service_host` | string | `0.0.0.0` | HTTP server bind address |
+| `service_port` | integer | `8000` | Web interface port (8000-65535) |
 
 ## Usage
 
 1. **Start the add-on:**
-   - Go to **Supervisor** → **AquaBle**
+   - Go to **Settings** → **Add-ons & Backups** → **AquaBle**
    - Click **Start**
 
 2. **Access web interface:**
-   - Click **Open Web UI** in the add-on panel
-   - Or visit `http://homeassistant.local:8000`
+   - Click **Open Web UI**, or
+   - Visit `http://homeassistant.local:8000`
 
 3. **Scan for devices:**
-   - Use the "Scan for devices" button to discover nearby Chihiros devices
-   - Connect to found devices to add them to your setup
+   - Click **Scan for Devices** button
+   - Wait for scan to complete
+   - Select devices to connect
 
-## Integration with Home Assistant
+## API Reference
 
-### Future Entity Integration
-*Planned features for deeper HA integration:*
+**Base URL:** `http://homeassistant.local:8000`
 
-- **Sensors:** Device status, battery levels, dosing schedules
-- **Switches:** Light on/off, dosing pump controls
-- **Lights:** Full WRGB light control entities
-- **Automations:** Schedule-based device control
+### Device Operations
 
-### Current Web Interface
-The add-on provides a full web-based dashboard accessible through Home Assistant's interface.
+- `GET /api/devices` - List all devices
+- `GET /api/devices/{address}` - Get device details
+- `POST /api/devices/{address}/command` - Send command to device
+- `GET /api/scan?timeout=5` - Scan for new devices
 
-## Bluetooth Requirements
+### Configuration Management
 
-### Prerequisites
-- Home Assistant with Bluetooth support
-- Compatible Bluetooth adapter (most built-in adapters work)
-- Chihiros devices within Bluetooth range
+- `GET /api/configurations/dosers` - List doser configurations
+- `GET /api/configurations/lights` - List light configurations
+- `POST /api/configurations/dosers` - Create doser configuration
+- `POST /api/configurations/lights` - Create light configuration
 
-### Troubleshooting Bluetooth
+### Status
 
-1. **Check Bluetooth status:**
-```bash
-# In HA terminal
-bluetoothctl list
-```
-
-2. **Add-on logs:**
-   - Check the add-on logs for Bluetooth connectivity issues
-   - Look for "Bluetooth service is not available" warnings
-
-3. **Device permissions:**
-   - The add-on automatically requests Bluetooth access
-   - No manual configuration should be needed
+- `GET /api/status` - System status
+- `GET /api/health` - Health check
+- `GET /api/configurations/summary` - Configuration summary
 
 ## Supported Devices
 
 - Chihiros 4 Head Dosing Pump
 - Chihiros LED A2
-- Chihiros WRGB II (Regular, Pro, Slim)
+- Chihiros WRGB II (all variants)
 - Chihiros Tiny Terrarium Egg
 - Chihiros C II (RGB, White)
 - Chihiros Universal WRGB
 - Chihiros Z Light TINY
+- Other Chihiros Bluetooth-enabled devices (likely compatible)
+
+## Troubleshooting
+
+### Add-on won't start
+
+- Check logs: **Settings** → **Add-ons & Backups** → **AquaBle** → **Logs**
+- Verify Bluetooth is available in **Settings** → **Devices & Services** → **Bluetooth**
+- Check disk space availability
+
+### Devices not scanning
+
+- Ensure Bluetooth adapter is working: `hciconfig` in HA terminal
+- Move device closer to adapter
+- Verify device Bluetooth is enabled
+
+### Connection timeout
+
+- Reduce environmental interference (other 2.4GHz devices)
+- Move closer to Bluetooth adapter
+- Increase scan timeout value
+
+### Permission denied errors
+
+- Add-on requires Bluetooth capability (automatic)
+- Restart add-on if permissions changed
 
 ## Data Persistence
 
-Device configurations and status are automatically saved to the add-on's data directory (`/data`), which persists across restarts and updates.
+Device configurations, metadata, and status are automatically saved to `/data`, which persists across restarts and updates.
 
-## Performance Considerations
+## Performance
 
-- **Memory usage:** ~100-200MB depending on connected devices
-- **CPU usage:** Low, with spikes during device scanning
-- **Network:** Minimal, only local Bluetooth communication
+- **Memory:** ~150-250MB with multiple devices
+- **CPU:** Low usage, spikes during scanning
+- **Network:** Minimal, local Bluetooth only
 
-## Support & Issues
+## Support
 
-- **Documentation:** [Full project documentation](https://github.com/caleb-venner/aquable)
+- **Documentation:** [GitHub Project](https://github.com/caleb-venner/aquable)
 - **Issues:** [GitHub Issues](https://github.com/caleb-venner/aquable/issues)
 - **Discussions:** [GitHub Discussions](https://github.com/caleb-venner/aquable/discussions)
 
-## Legal Notice
+## Legal
 
-This add-on is not affiliated with, endorsed by, or approved by Chihiros Aquatic Studio or Shanghai Ogino Biotechnology Co.,Ltd. It is an independent, open-source project developed through reverse engineering.
+This add-on is not affiliated with Chihiros or its parent company. It is an independent, open-source project created through reverse engineering.
+
+See [LICENSE](../LICENSE) for full license information.

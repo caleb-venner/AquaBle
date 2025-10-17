@@ -111,18 +111,36 @@ jobs:
           name: frontend-dist
           path: frontend/dist/
 
-      - name: Build Home Assistant Add-on
-        uses: hassio-addons/action@v2
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
         with:
-          type: addon
-          path: ./hassio
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build Home Assistant Add-on
+        uses: home-assistant/builder@master
+        with:
+          args: |
+            --all
+            --docker-user=${{ github.actor }}
+            --docker-password=${{ secrets.GITHUB_TOKEN }}
+          version: latest
+          channel: dev
           target: ${{ matrix.arch }}
+          image: ghcr.io/${{ github.repository }}-hass
+          addon: ./hassio
+          registry: ghcr.io
 
       - name: Upload to HA Add-on Repository
         if: startsWith(github.ref, 'refs/tags/v')
         run: |
-          echo "Would upload to HA add-on repository for release"
-          # TODO: Implement actual upload to HA add-on store
+          echo "Home Assistant add-on built and available at:"
+          echo "ghcr.io/${{ github.repository }}-hass:${{ matrix.arch }}"
+          # TODO: Implement actual upload to official HA add-on store
 
   # Python package build (for pip installation)
   python-package:

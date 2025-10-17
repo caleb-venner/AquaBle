@@ -59,4 +59,4 @@ url: "https://github.com/caleb-venner/aquable"
 webui: "http://[HOST]:[PORT:8000]"
 
 # Image configuration
-image: "ghcr.io/caleb-venner/aquable/{arch}"
+image: "ghcr.io/caleb-venner/aquable-hass"
