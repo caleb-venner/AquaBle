@@ -1,6 +1,6 @@
 ---
 # yamllint disable rule:truthy
-name: Build and Deploy Multi-Platform
+name: Build Home Assistant Add-on
 
 on:
   push:
@@ -9,12 +9,8 @@ on:
   pull_request:
     branches: [main]
 
-env:
-  REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
-
 jobs:
-  # Frontend build (shared by all deployments)
+  # Frontend build
   frontend:
     runs-on: ubuntu-latest
     steps:
@@ -25,14 +21,15 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
 
-      - name: Install Dependencies (workaround for npm optional deps bug)
-        run: |
-          rm -rf node_modules package-lock.json
-          npm install
-          git checkout package-lock.json
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
 
       - name: Build frontend
+        working-directory: frontend
         run: npm run build
 
       - name: Upload frontend artifacts
@@ -40,9 +37,10 @@ jobs:
         with:
           name: frontend-dist
           path: frontend/dist/
+          retention-days: 1
 
-  # Docker image build (base for both standalone and HA add-on)
-  docker:
+  # Home Assistant Add-on build (amd64 only for now)
+  hassio-addon:
     needs: frontend
     runs-on: ubuntu-latest
     steps:
@@ -54,65 +52,6 @@ jobs:
         with:
           name: frontend-dist
           path: frontend/dist/
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Log in to Container Registry
-        if: github.event_name != 'pull_request'
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Extract metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          tags: |
-            type=ref,event=branch
-            type=ref,event=pr
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=sha
-
-      - name: Build and push multi-arch Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: Dockerfile
-          platforms: ${{ startsWith(github.ref, 'refs/tags/v') && 'linux/amd64,linux/arm64,linux/arm/v7' || 'linux/amd64' }}
-          push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-  # Home Assistant Add-on build
-  hassio-addon:
-    needs: [frontend, docker]
-    runs-on: ubuntu-latest
-    if: github.event_name != 'pull_request'
-    strategy:
-      matrix:
-        arch: ${{ fromJson(startsWith(github.ref, 'refs/tags/') && '["aarch64", "amd64", "armv7"]' || '["aarch64", "amd64"]') }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Download frontend artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: frontend-dist
-          path: frontend/dist/
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
 
       - name: Log in to Container Registry
         uses: docker/login-action@v3
@@ -121,53 +60,9 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build Home Assistant Add-on
+      - name: Build Home Assistant Add-on (amd64)
         uses: home-assistant/builder@master
         with:
           args: |
-            --${{ matrix.arch }}
+            --amd64
             --target hassio
-            --docker-hub ghcr.io/${{ github.repository_owner }}
-            --docker-user ${{ github.actor }}
-            --docker-password ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Upload to HA Add-on Repository
-        if: startsWith(github.ref, 'refs/tags/v')
-        run: |
-          echo "Home Assistant add-on built and available at:"
-          echo "ghcr.io/${{ github.repository_owner }}/${{ matrix.arch }}-addon-aquable:latest"
-          # TODO: Implement actual upload to official HA add-on store
-
-  # Python package build (for pip installation)
-  python-package:
-    needs: frontend
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Download frontend artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: frontend-dist
-          path: frontend/dist/
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.11'
-
-      - name: Install build dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install build twine
-
-      - name: Build package
-        run: python -m build
-
-      - name: Publish to PyPI
-        if: startsWith(github.ref, 'refs/tags/v')
-        env:
-          TWINE_USERNAME: __token__
-          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
-        run: twine upload dist/*
