@@ -27,8 +27,8 @@ jobs:
       - name: Debug add-on build context
         run: |
           echo "Repository root contents:" && ls -a
-          echo "hassio directory contents:" && ls -a hassio
-          echo "hassio/build directory contents (top level):" && ls -a hassio/build
+          echo "aquable directory contents:" && ls -a aquable
+          echo "aquable/build directory contents (top level):" && ls -a aquable/build
 
       - name: Get version from tag
         id: version
@@ -52,6 +52,6 @@ jobs:
         with:
           args: |
             --all \
-            --target hassio \
+            --target aquable \
             --docker-hub ghcr.io/${{ github.repository_owner }} \
             --no-latest
