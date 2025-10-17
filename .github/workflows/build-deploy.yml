@@ -126,16 +126,16 @@ jobs:
         with:
           args: |
             --${{ matrix.arch }}
-            --target hassio
+            --target ./hassio
+            --docker-hub ghcr.io/${{ github.repository_owner }}
             --docker-user ${{ github.actor }}
             --docker-password ${{ secrets.GITHUB_TOKEN }}
-            --image "aquable-{arch}"
 
       - name: Upload to HA Add-on Repository
         if: startsWith(github.ref, 'refs/tags/v')
         run: |
           echo "Home Assistant add-on built and available at:"
-          echo "ghcr.io/${{ github.repository_owner }}/aquable-${{ matrix.arch }}"
+          echo "ghcr.io/${{ github.repository_owner }}/${{ matrix.arch }}-addon-aquable:latest"
           # TODO: Implement actual upload to official HA add-on store
 
   # Python package build (for pip installation)
