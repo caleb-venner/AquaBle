@@ -21,6 +21,7 @@ from pydantic import BaseModel, ConfigDict
 from .doser_storage import DeviceMetadata as DoserMetadata
 from .doser_storage import DoserDevice
 from .light_storage import LightDevice, LightMetadata
+from .safe_storage import safe_mkdir, safe_write_json
 from .time_utils import now_iso
 
 logger = logging.getLogger(__name__)
@@ -85,19 +86,7 @@ class UnifiedDeviceStorage:
     def __init__(self, devices_dir: Path | str):
         """Initialize storage with the devices directory."""
         self._devices_dir = Path(devices_dir)
-        try:
-            self._devices_dir.mkdir(parents=True, exist_ok=True)
-        except PermissionError:
-            # On some systems (e.g., Unraid), the mounted volume may be read-only
-            # or have restrictive permissions. Log a warning but continue.
-            # Device files will be stored in memory or fallback gracefully.
-            import logging
-
-            logger = logging.getLogger(__name__)
-            logger.warning(
-                f"Could not create devices directory {self._devices_dir}: "
-                "Permission denied. Device storage may not persist."
-            )
+        safe_mkdir(self._devices_dir, purpose="unified device storage")
 
     def _get_device_file_path(self, device_id: str) -> Path:
         """Get the file path for a specific device."""
@@ -135,39 +124,21 @@ class UnifiedDeviceStorage:
         """Write a unified device file atomically."""
         device_file = self._get_device_file_path(device.device_id)
 
-        try:
-            device_file.parent.mkdir(parents=True, exist_ok=True)
-        except PermissionError:
-            import logging
-
-            logger = logging.getLogger(__name__)
-            logger.warning(
-                f"Could not create directory for device file {device_file}: "
-                "Permission denied. Device will not persist to storage."
-            )
+        # Ensure parent directory exists
+        if not safe_mkdir(
+            device_file.parent, purpose=f"device storage for {device.device_id}"
+        ):
             return
 
         # Update timestamp
         device.last_updated = now_iso()
 
         # Write atomically
-        try:
-            tmp_file = device_file.with_suffix(".tmp")
-            tmp_file.write_text(
-                json.dumps(
-                    device.model_dump(mode="json"), indent=2, sort_keys=True
-                ),
-                encoding="utf-8",
-            )
-            tmp_file.replace(device_file)
-        except PermissionError:
-            import logging
-
-            logger = logging.getLogger(__name__)
-            logger.warning(
-                f"Could not write device file {device_file}: "
-                "Permission denied. Device will not persist to storage."
-            )
+        safe_write_json(
+            device_file,
+            device.model_dump(mode="json"),
+            purpose=f"device file for {device.device_id}",
+        )
 
     def update_status(
         self,
