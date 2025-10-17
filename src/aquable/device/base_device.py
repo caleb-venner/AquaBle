@@ -359,6 +359,15 @@ class BaseDevice(ABC):
             if self._client and self._client.is_connected:
                 self._reset_disconnect_timer()
                 return
+
+            # Clean up any stale connection state before reconnecting
+            if self._client:
+                self._logger.debug(
+                    "%s: Cleaning up stale connection before reconnect",
+                    self.name,
+                )
+                await self._cleanup_connection()
+
             self._logger.debug(
                 "%s: Connecting; RSSI: %s",
                 self.name,
@@ -393,10 +402,35 @@ class BaseDevice(ABC):
                 self.rssi,
             )
             if self._read_char is not None:
-                await client.start_notify(
-                    self._read_char,
-                    self._notification_handler,  # type: ignore[arg-type]
-                )
+                # Try to start notifications with retry on ATT error
+                max_retries = 3
+                for attempt in range(max_retries):
+                    try:
+                        await client.start_notify(
+                            self._read_char,
+                            self._notification_handler,  # type: ignore[arg-type]
+                        )
+                        break
+                    except BleakDBusError as e:
+                        if "0x0e" in str(e) or "Unlikely Error" in str(e):
+                            self._logger.warning(
+                                "%s: ATT error on notify subscription "
+                                "(attempt %d/%d), retrying after cleanup",
+                                self.name,
+                                attempt + 1,
+                                max_retries,
+                            )
+                            if attempt < max_retries - 1:
+                                # Try to stop any existing subscription
+                                try:
+                                    await client.stop_notify(self._read_char)
+                                    await asyncio.sleep(0.5)
+                                except Exception:
+                                    pass
+                            else:
+                                raise
+                        else:
+                            raise
             else:
                 raise CharacteristicMissingError(
                     "Read characteristic not resolved"
@@ -410,6 +444,35 @@ class BaseDevice(ABC):
         self._disconnect_timer = self.loop.call_later(
             DISCONNECT_DELAY, self._disconnect
         )
+
+    async def _cleanup_connection(self) -> None:
+        """Clean up stale connection without lock (caller must hold lock)."""
+        read_char = self._read_char
+        client = self._client
+        self._expected_disconnect = True
+        self._client = None
+        self._read_char = None
+        self._write_char = None
+        if client:
+            if read_char:
+                try:
+                    if client.is_connected:
+                        await client.stop_notify(read_char)
+                except Exception as e:
+                    self._logger.debug(
+                        "%s: Failed to stop notifications during cleanup: %s",
+                        self.name,
+                        e,
+                    )
+            if client.is_connected:
+                try:
+                    await client.disconnect()
+                except Exception as e:
+                    self._logger.debug(
+                        "%s: Failed to disconnect during cleanup: %s",
+                        self.name,
+                        e,
+                    )
 
     async def disconnect(self) -> None:
         """Disconnect."""
