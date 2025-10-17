@@ -55,6 +55,9 @@ jobs:
           name: frontend-dist
           path: frontend/dist/
 
+      - name: Prepare add-on build context
+        run: mkdir -p hassio/frontend && cp -r frontend/dist hassio/frontend/
+
       - name: Copy add-on configuration files
         run: cp hassio/config.json . && cp hassio/build.json .
 
