@@ -4,7 +4,7 @@
 AQUA_BLE_AUTO_DISCOVER ?= 0
 export AQUA_BLE_AUTO_DISCOVER
 
-.PHONY: help dev dev-front dev-back build front-build lint test precommit clean
+.PHONY: help dev dev-front dev-back build front-build lint test precommit clean hassio
 
 help:
 	@echo "make dev        # run frontend (vite) and backend (uvicorn)"
