@@ -1,0 +1,70 @@
+#include <tunables/global>
+
+profile aquable flags=(attach_disconnected,mediate_deleted) {
+  #include <abstractions/base>
+
+  # Capabilities
+  file,
+  signal (send) set=(kill,term,int,hup,cont),
+
+  # S6-Overlay
+  /init ix,
+  /bin/** ix,
+  /usr/bin/** ix,
+  /run/{s6,s6-rc*,service}/** ix,
+  /package/** ix,
+  /command/** ix,
+  /etc/services.d/** rwix,
+  /etc/cont-init.d/** rwix,
+  /etc/cont-finish.d/** rwix,
+  /run/{,**} rwk,
+  /dev/tty rw,
+
+  # Bashio
+  /usr/lib/bashio/** ix,
+  /tmp/** rwk,
+
+  # Access to options.json and other files within addon data
+  /data/** rw,
+
+  # Access to mapped volumes (config)
+  /config/** rw,
+
+  # Python and application requirements
+  /app/** r,
+  /app/src/** r,
+  /app/frontend/dist/** r,
+  /usr/lib/python3.*/** ix,
+  /usr/local/lib/python3.*/** ix,
+
+  # Bluetooth access
+  /sys/class/bluetooth/ r,
+  /sys/devices/**/bluetooth/** r,
+  /dev/rfkill rw,
+  /var/lib/bluetooth/** rw,
+
+  # D-Bus for Bluetooth communication
+  /usr/bin/dbus-daemon ix,
+  /run/dbus/** rw,
+  /var/run/dbus/** rw,
+
+  # Network access for REST API
+  network inet stream,
+  network inet6 stream,
+  network bluetooth stream,
+
+  # Allow execution of Python
+  /usr/bin/python3* ix,
+  /usr/local/bin/python3* ix,
+
+  # Allow reading of system information
+  /etc/hosts r,
+  /etc/resolv.conf r,
+  /etc/nsswitch.conf r,
+  /etc/passwd r,
+  /etc/group r,
+
+  # Allow access to proc and sys for system information
+  /proc/** r,
+  /sys/** r,
+}

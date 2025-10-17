@@ -20,7 +20,7 @@ docker build -t aquable:latest -f docker/Dockerfile .
 # 2. Home Assistant add-on build (local)
 echo "🏠 Building HA add-on (local test)..."
 # Note: For full HA add-on testing, use the HA CLI or supervisor
-docker build -t aquable:hassio -f hassio/Dockerfile .
+docker build -t aquable:addon -f aquable/Dockerfile .
 
 # 3. Python package build
 echo "🐍 Building Python package..."
@@ -34,6 +34,6 @@ echo "  Local:      python -m src.aquable.service"
 echo "  Package:    pip install dist/*.whl"
 echo ""
 echo "📋 Next steps for HA add-on:"
-echo "  1. Copy hassio/ folder to your HA add-ons directory"
+echo "  1. Copy aquable/ folder to your HA add-ons directory"
 echo "  2. Reload HA add-ons"
 echo "  3. Install and configure the add-on"

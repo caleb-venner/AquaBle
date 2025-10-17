@@ -1,5 +1,5 @@
 # Home Assistant Add-on Dockerfile for AquaBle
-# This Dockerfile is optimized for Home Assistant Supervisor
+# https://developers.home-assistant.io/docs/add-ons/configuration#add-on-dockerfile
 
 ARG BUILD_FROM
 FROM ${BUILD_FROM}
@@ -53,9 +53,8 @@ ENV AQUA_BLE_FRONTEND_DIST=/app/frontend/dist
 ENV AQUA_BLE_SERVICE_HOST=0.0.0.0
 ENV AQUA_BLE_SERVICE_PORT=8000
 
-# Copy run script
-COPY run.sh /
-RUN chmod a+x /run.sh
+# Copy root filesystem
+COPY rootfs /
 
 # Expose port
 EXPOSE 8000
@@ -64,5 +63,9 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
     CMD wget --no-verbose --tries=1 --spider http://localhost:8000/api/health || exit 1
 
-# Run script
-CMD ["/run.sh"]
+# Labels
+LABEL \
+    io.hass.name="AquaBle" \
+    io.hass.description="Control Chihiros aquarium lights and dosing pumps over Bluetooth Low Energy" \
+    io.hass.type="addon" \
+    io.hass.version="${SETUPTOOLS_SCM_PRETEND_VERSION_FOR_AQUABLE}"

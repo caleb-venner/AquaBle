@@ -1,15 +1,32 @@
-# AquaBle — *pronounced "AK-wuh-bul" (/ˈækwə.bəl/)*
+# AquaBle Home Assistant Add-on Repository
 
 ![AquaBle icon](aquable-banner.png)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT) [![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/) [![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-teal)](https://fastapi.tiangolo.com/)
 
-AquaBle is a lightweight network service to discover and control Chihiros aquarium lights and dosing pumps over Bluetooth Low Energy. It exposes a REST API and a web dashboard for device discovery, command execution, and persistent configuration (schedules, profiles). Deploy as a Home Assistant add-on or install directly with Python for development.
+This repository contains Home Assistant add-ons for AquaBle, a lightweight network service to discover and control Chihiros aquarium lights and dosing pumps over Bluetooth Low Energy.
 
-**Current project state**: in very active development; expect further functionality and refinement soon.
+Add-on documentation: <https://developers.home-assistant.io/docs/add-ons>
 
-*Built on the open-source [Chihiros LED Control](https://github.com/TheMicDiet/chihiros-led-control) project. Licensed under MIT.*
+[![Open your Home Assistant instance and show the add add-on repository dialog with a specific repository URL pre-filled.](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Fcaleb-venner%2Faquable)
 
+## Add-ons
+
+This repository contains the following add-ons:
+
+### [AquaBle](./aquable)
+
+![Supports aarch64 Architecture][aarch64-shield]
+![Supports amd64 Architecture][amd64-shield]
+![Supports armhf Architecture][armhf-shield]
+![Supports armv7 Architecture][armv7-shield]
+
+_Control Chihiros aquarium lights and dosing pumps over Bluetooth Low Energy._
+
+[aarch64-shield]: https://img.shields.io/badge/aarch64-yes-green.svg
+[amd64-shield]: https://img.shields.io/badge/amd64-yes-green.svg
+[armhf-shield]: https://img.shields.io/badge/armhf-yes-green.svg
+[armv7-shield]: https://img.shields.io/badge/armv7-yes-green.svg
 
 ## Legal Disclaimer
 
@@ -21,54 +38,7 @@ AquaBle is a lightweight network service to discover and control Chihiros aquari
 - "Chihiros" is a trademark of Chihiros Aquatic Studio (Shanghai Ogino Biotechnology Co.,Ltd) and is used here solely for device identification purposes
 - This software is provided "as-is" without warranty of any kind
 
-## Supported Devices
-
-- Chihiros 4 Head Dosing Pump
-- Chihiros WRGB II
-- Chihiros WRGB II Pro
-- Chihiros LED A2
-- Chihiros Tiny Terrarium Egg
-- Chihiros C II (RGB, White)
-- Chihiros Universal WRGB
-- Chihiros Z Light TINY
-
-- other Doser and LED models might work as well but are not tested
-
-## Deployment Options
-
-This project supports two deployment methods:
-
-### Home Assistant Add-on (Recommended)
-
-Perfect integration with Home Assistant for smart home automation.
-
-- **Easy installation** through HA add-on store
-- **Bluetooth access** automatically configured
-- **Data persistence** managed by HA supervisor
-- **Web interface** accessible through HA dashboard
-
-**[See Home Assistant setup guide](hassio/README.md)**
-
-### Python Service (Development)
-
-Direct installation for development or advanced users.
-
-- **Native performance** on Raspberry Pi or Linux
-- **Development environment** for contributing
-- **Full control** over dependencies and configuration
-- **System service** integration available
-
-**[See local installation guide](#local-installation-development)**
-
-## Requirements
-
-- Device with Bluetooth LE support
-- [Python 3.10+](https://www.python.org/downloads/) (for local development)
-- Compatible Chihiros devices within Bluetooth range
-
-## Quick Start
-
-### Home Assistant Add-on
+## Installation
 
 1. Add this repository to your Home Assistant Supervisor:
    - Go to **Supervisor** → **Add-on Store** → **⋮** (top right) → **Repositories**
@@ -78,134 +48,44 @@ Direct installation for development or advanced users.
 
 3. Configure options if needed (auto-discover, timezone, etc.)
 
-4. Start the add-on and access the web interface at `http://homeassistant.local:8000`
+4. Start the add-on and access the web interface
 
-See the [complete setup guide](hassio/README.md) for more details.
-
-### Local Installation (Development)
-
-Install the package and launch the bundled FastAPI/Uvicorn entrypoint:
-
-```bash
-python -m venv venv
-source venv/bin/activate
-pip install -e .
-
-aqua-ble-service
-```
-
-Environment variables `AQUA_BLE_SERVICE_HOST` and `AQUA_BLE_SERVICE_PORT`
-override the default listen address (`0.0.0.0:8000`). Once running, visit
-`http://localhost:8000/` for the TypeScript dashboard. If the SPA has not yet
-been built (or a Vite dev server is not running), the root route will return a
-503 with instructions on how to start the frontend build. All capabilities
-remain exposed under the `/api/*` endpoints.
-
-### First run and device discovery
-
-On a fresh start (no cached devices), the dashboard shows a simple onboarding panel with a "Scan for devices" button. Use it to discover nearby supported devices and click "Connect" to add them to the service cache.
-
-Equivalent REST endpoints are available if you prefer scripts:
-
-- `GET /api/scan` → returns a list of nearby supported devices: address, name, product, device_type
-- `POST /api/devices/{address}/connect` → connects to the device and captures an initial status
-
-Optional automation: set `AQUA_BLE_AUTO_DISCOVER=1` to perform a one-off scan at startup (only when there are no cached devices) and attempt to connect to supported devices automatically.
-
-```bash
-# Disable auto-discover when launching both servers
-make dev AQUA_BLE_AUTO_DISCOVER=0
-
-# Run just the backend with auto-discover disabled/enabled explicitly
-make dev-back AQUA_BLE_AUTO_DISCOVER=0
-make dev-back AQUA_BLE_AUTO_DISCOVER=1
-```
-
-### Service runtime tuning
-
-The service performs a brief wait after issuing a BLE status request to
-allow notification frames to arrive before reading the device's
-`last_status`. This delay defaults to `1.5` seconds but can be tuned via
-the environment variable:
-
-```bash
-export AQUA_BLE_STATUS_WAIT=0.8  # seconds
-```
-
-Lowering the value can make successive manual refreshes faster but risks
-capturing an incomplete status frame on slower adapters or noisy RF
-environments. Increasing it slightly may help if you observe intermittent
-"No status received" errors when polling devices.
-
-## Environment Variables
-
-Centralized reference for runtime configuration knobs exposed by the service / SPA integration.
-
-| Variable | Default | Type | Purpose | Example |
-|----------|---------|------|---------|---------|
-| `AQUA_BLE_SERVICE_HOST` | `0.0.0.0` | str | Listen interface for the FastAPI/Uvicorn server. | `127.0.0.1` |
-| `AQUA_BLE_SERVICE_PORT` | `8000` | int | Listen port for the FastAPI/Uvicorn server. | `9000` |
-| `AQUA_BLE_AUTO_RECONNECT` | `1` | int/bool | Attempt reconnect to previously cached devices on startup (`1` truthy, `0` disabled). | `0` |
-| `AQUA_BLE_AUTO_DISCOVER` | `0` | int/bool | When no cached devices exist, perform a one-off scan at startup and try to connect to supported devices automatically. | `1` |
-| `AQUA_BLE_STATUS_WAIT` | `1.5` | float (s) | Delay after requesting a status before reading cached frame (tune for adapter speed / RF conditions). | `0.8` |
-| `AQUA_BLE_FRONTEND_DEV` | (unset) | str/URL | If set, root path proxies to a running Vite dev server instead of serving built assets. Set to `0` to force-disable proxy even if assets missing. | `http://localhost:5173` |
-| `AQUA_BLE_FRONTEND_DIST` | `frontend/dist` | path | Absolute/relative path to built SPA assets (index.html + assets/). | `/opt/app/frontend-build` |
-| `AQUA_BLE_LOG_LEVEL` | `INFO` | str | Logging verbosity for service logger (standard Python levels). | `DEBUG` |
-| `AQUA_BLE_CONFIG_DIR` | `~/.aqua-ble` | path | Configuration directory for device state and profiles. | `~/.config/aqua-ble` |
-
-Notes:
-
-- Boolean style variables accept `0/1`, `true/false`, `yes/no`, or `on/off` (case-insensitive). Invalid or empty values fall back to the documented default.
-- Auto-discover runs only when the cache is empty (first run) to avoid interrupting existing connections.
-- `AQUA_BLE_STATUS_WAIT` invalid (non-float) values fall back to the default at import time.
-- When both a dev server proxy and a local dist are unavailable the root route returns HTTP 503 with guidance.
-- Changes to these variables require a service restart to take effect (they are read at module import or startup).
-- Configuration directory migration: If `~/.chihiros/` exists and `~/.aqua-ble/` doesn't, configs are automatically migrated to the new location on first startup.
+See the [AquaBle add-on documentation](./aquable) for complete details.
 
 ## Development
 
-For local development and testing:
+For development and testing of this add-on or contributing to AquaBle:
 
-| Command ID | 1 | Command Length | Message ID High | Message ID Low | Mode | Parameters | Checksum |
-| --- | --- | --- | --- | --- | --- | --- | --- |
+```bash
+# Clone the repository
+git clone https://github.com/caleb-venner/aquable.git
+cd aquable
 
-The checksum is calculated by XORing all bytes of the command together. The checksum is then added to the command as the last byte.
+# Set up Python environment
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+pip install -e .
 
-The message id is a 16 bit number that is incremented with each command. It is split into two bytes. The first byte is the high byte and the second byte is the low byte.
+# Run backend service
+make dev-back
 
-The command length is the number of parameters + 5.
+# In another terminal, run frontend
+make dev-front
+```
 
-### Manual Mode
+See the main project documentation in the repository for more details on development workflows, API documentation, and contributing guidelines.
 
-The LED can be set to a specific brightness by sending the following command with the following options:
+## Support
 
-- Command ID: **90**
-- Mode: **7**
-- Parameters: [ **Color** (0-2), **Brightness** (0 - 100)]
+If you encounter issues or have questions:
 
-On non-RGB models, the color parameter should be set to 0 to indicate white. On RGB models, each color's brightness is sent as a separate command. Red is 0, green is 1, blue is 2.
+- Check the [AquaBle add-on documentation](./aquable)
+- Review the [project issues](https://github.com/caleb-venner/aquable/issues)
+- Visit the [Home Assistant Community Forums](https://community.home-assistant.io/)
 
-### Auto Mode
+## License
 
-To switch to auto mode, the following command can be used:
-
-- Command ID: **90**
-- Mode: **5**
-- Parameters: [ **18**, **255**, **255** ]
-
-With auto mode enabled, the LED can be set to automatically turn on and off at a specific time. The following command can be used to create a new setting:
-
-- Command ID: **165**
-- Mode: **25**
-- Parameters: [ **sunrise hour**, **sunrise minutes**, **sunset hour**, **sunset minutes**, **ramp up minutes**, **weekdays**, **red brightness**, **green brightness**, **blue brightness**, 5x **255** ]
-
-The weekdays are encoded as a sequence of 7 bits with the following structure: `Monday Thuesday Wednesday Thursday Friday Saturday Sunday`. A bit is set to 1 if the LED should be on on that day. It is only possible to set one setting per day i.e. no conflicting settings. There is also a maximum of 7 settings.
-
-On non-RGB models, the desired brightness should be set as the red brightness while the other two colors should be set to **255**.
-
-To deactivate a setting, the same command can be used but the brightness has to be set to **255**.
-
-#### Set Time
+MIT License - see [LICENSE](LICENSE) file for details.
 
 The current time is required for auto mode and can be set by sending the following command:
 

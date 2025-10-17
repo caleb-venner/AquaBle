@@ -1,6 +1,6 @@
 # Docker Deployment Guide
 
-> **Note:** Standalone Docker deployment is deprecated. We recommend using the [Home Assistant add-on](../hassio/README.md) instead, which provides better integration, automatic Bluetooth configuration, and easier management.
+> **Note:** Standalone Docker deployment is deprecated. We recommend using the [Home Assistant add-on](../aquable/README.md) instead, which provides better integration, automatic Bluetooth configuration, and easier management.
 >
 > This documentation is maintained for advanced users who need standalone Docker deployment.
 

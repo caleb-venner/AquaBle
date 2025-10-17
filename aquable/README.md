@@ -1,30 +1,44 @@
-# AquaBle Home Assistant Add-on
+# Home Assistant Add-on: AquaBle
 
-Control Chihiros aquarium lights and dosing pumps over Bluetooth Low Energy directly from Home Assistant.
+_Control Chihiros aquarium lights and dosing pumps over Bluetooth Low Energy._
+
+![Supports aarch64 Architecture][aarch64-shield]
+![Supports amd64 Architecture][amd64-shield]
+![Supports armhf Architecture][armhf-shield]
+![Supports armv7 Architecture][armv7-shield]
+
+[aarch64-shield]: https://img.shields.io/badge/aarch64-yes-green.svg
+[amd64-shield]: https://img.shields.io/badge/amd64-yes-green.svg
+[armhf-shield]: https://img.shields.io/badge/armhf-yes-green.svg
+[armv7-shield]: https://img.shields.io/badge/armv7-yes-green.svg
 
 ## About
 
-AquaBle is a lightweight network service that provides:
+AquaBle is a Home Assistant add-on that provides direct Bluetooth Low Energy control for Chihiros aquarium devices. It offers:
 
-- **Device Discovery**: Automatically find nearby Chihiros devices
-- **REST API**: Full control over lights, dosers, and schedules
-- **Web Dashboard**: Modern interface for device management
-- **Persistent Storage**: Configurations saved in Home Assistant data directory
-- **Bluetooth Integration**: Direct BLE communication with aquarium devices
+- **Automatic Device Discovery**: Find and connect to Chihiros lights and dosing pumps
+- **Web Dashboard**: Modern interface for device management and control
+- **REST API**: Full programmatic control for automation and integration
+- **Persistent Configuration**: Device settings, schedules, and profiles saved automatically
+- **Timezone Support**: Automatic timezone synchronization with Home Assistant
 
 ## Installation
 
 1. Add this repository to your Home Assistant Supervisor:
-   - Go to **Supervisor** → **Add-on Store** → **⋮** (top right) → **Repositories**
+   - Navigate to **Supervisor** → **Add-on Store** → **⋮** (menu) → **Repositories**
    - Add: `https://github.com/caleb-venner/aquable`
 
 2. Install the **AquaBle** add-on from the store
 
-3. Start the add-on and check the logs for any errors
+3. Configure the add-on options as needed
 
-4. Access the web interface at `http://homeassistant.local:8000` (or your HA IP address)
+4. Start the add-on
+
+5. Access the web interface through the "Open Web UI" button or at `http://homeassistant.local:8000`
 
 ## Configuration
+
+Example configuration:
 
 ```yaml
 auto_reconnect: true
@@ -33,21 +47,35 @@ status_wait_seconds: 1.5
 timezone: "auto"
 ```
 
-### Options
-
-- **auto_reconnect** (boolean, default: `true`): Automatically reconnect to devices when they become available
-- **auto_discover** (boolean, default: `true`): Automatically discover nearby Chihiros devices on startup
-- **status_wait_seconds** (float, 0.5-5.0, default: `1.5`): Time to wait for device status responses after commands
-- **timezone** (string, default: `"auto"`): Display timezone for schedules. Use "auto" to inherit from Home Assistant, or specify a timezone like "America/New_York"
+For detailed configuration options and usage instructions, see [DOCS.md](DOCS.md).
 
 ## Supported Devices
 
-- Chihiros 4 Head Dosing Pump
+### Lights
 - Chihiros WRGB II / WRGB II Pro
 - Chihiros LED A2
 - Chihiros Tiny Terrarium Egg
 - Chihiros C II (RGB, White)
 - Chihiros Universal WRGB
+- Chihiros Z Light TINY
+
+### Dosers
+- Chihiros 4 Head Dosing Pump
+
+Other Chihiros models using the same BLE protocol may also work.
+
+## Support
+
+For help and support:
+
+- Read the [documentation](DOCS.md)
+- Check the [changelog](CHANGELOG.md) for version information
+- Report issues on [GitHub](https://github.com/caleb-venner/aquable/issues)
+
+## Legal Notice
+
+This add-on is not affiliated with, endorsed by, or approved by Chihiros Aquatic Studio or Shanghai Ogino Biotechnology Co.,Ltd. This is an independent, open-source project. Use at your own risk.
+
 - Chihiros Z Light TINY
 
 Other Chihiros devices may also work but are untested.

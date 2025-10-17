@@ -1,5 +1,9 @@
 #!/usr/bin/with-contenv bashio
 # shellcheck shell=bash
+# ==============================================================================
+# Home Assistant Add-on: AquaBle
+# Runs the AquaBle service
+# ==============================================================================
 set -e
 
 # Get configuration options from Home Assistant

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Convenience script to reproduce the GitHub Actions Home Assistant add-on build locally
 # 1. Installs frontend dependencies and builds the SPA (npm ci && npm run build)
-# 2. Prepares the hassio/build/ directory via scripts/prepare_addon_context.sh
+# 2. Prepares the aquable/build/ directory via scripts/prepare_addon_context.sh
 # 3. Invokes the Home Assistant builder container to build multi-arch images
 
 set -euo pipefail
@@ -59,10 +59,10 @@ fi
 
 docker run ${DOCKER_RUN_OPTS[@]} \
     "${BUILDER_IMAGE}" \
-    --target hassio \
+    --target aquable \
     --docker-hub "ghcr.io/${DOCKER_USER}" \
     --image "aquable" \
     --all \
     ${VERSION_ARGS}
 
-printf "\n[4/4] Build complete. Artifacts cached under hassio/build/.\n"
+printf "\n[4/4] Build complete. Artifacts cached under aquable/build/.\n"

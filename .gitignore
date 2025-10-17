@@ -181,4 +181,4 @@ cython_debug/
 aquable.code-workspace
 
 # Home Assistant add-on build artifacts
-hassio/build/
+aquable/build/
