@@ -131,7 +131,7 @@ jobs:
           version: latest
           channel: dev
           target: ${{ matrix.arch }}
-          image: ghcr.io/${{ github.repository }}-hass
+          image: ghcr.io/${{ github.repository_owner }}/aquable-hass
           addon: ./hassio
           registry: ghcr.io
 
