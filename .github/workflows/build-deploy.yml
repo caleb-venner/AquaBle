@@ -1,6 +1,6 @@
 ---
 # yamllint disable rule:truthy
-name: Build Home Assistant Add-on
+name: Build and Deploy
 
 on:
   push:
@@ -9,8 +9,12 @@ on:
   pull_request:
     branches: [main]
 
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
 jobs:
-  # Frontend build
+  # Frontend build (shared by all deployments)
   frontend:
     runs-on: ubuntu-latest
     steps:
@@ -24,12 +28,11 @@ jobs:
 
       - name: Install Dependencies (workaround for npm optional deps bug)
         run: |
-          cd frontend
           rm -rf node_modules package-lock.json
           npm install
+          git checkout package-lock.json
 
       - name: Build frontend
-        working-directory: frontend
         run: npm run build
 
       - name: Upload frontend artifacts
@@ -37,7 +40,6 @@ jobs:
         with:
           name: frontend-dist
           path: frontend/dist/
-          retention-days: 1
 
   # Home Assistant Add-on build (amd64 only for now)
   hassio-addon:
