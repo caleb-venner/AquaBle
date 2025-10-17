@@ -50,7 +50,7 @@ ENV AQUA_BLE_SERVICE_HOST=0.0.0.0
 ENV AQUA_BLE_SERVICE_PORT=8000
 
 # Copy run script
-COPY hassio/run.sh /
+COPY run.sh /
 RUN chmod a+x /run.sh
 
 # Expose port
