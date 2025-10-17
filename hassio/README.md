@@ -1,171 +1,123 @@
-# Home Assistant Add-on: AquaBle
+# AquaBle Home Assistant Add-on
 
-Manage your Chihiros aquarium devices (dosers, lights) directly from Home Assistant via Bluetooth LE.
+Control Chihiros aquarium lights and dosing pumps over Bluetooth Low Energy directly from Home Assistant.
 
 ## About
 
-AquaBle is a Home Assistant add-on that provides comprehensive control of Chihiros aquarium devices over Bluetooth LE:
+AquaBle is a lightweight network service that provides:
 
-- **Doser Pumps**: Monitor and control dosing schedules, track lifetime totals
-- **LED Lights**: Control color channels, brightness, and lighting schedules
-- **Status Monitoring**: Real-time device status, battery levels, error reporting
-- **Device Management**: Scan, connect, and manage multiple devices
-
-## Features
-
-✅ **Multi-device support** - Control multiple dosers and lights simultaneously
-✅ **Persistent configurations** - Device settings saved locally
-✅ **Web interface** - Built-in dashboard at `http://homeassistant.local:8000`
-✅ **REST API** - Full API for automation and integrations
-✅ **Auto-reconnect** - Automatically reconnect to cached devices on startup
-✅ **Status caching** - Real-time device status updates
+- **Device Discovery**: Automatically find nearby Chihiros devices
+- **REST API**: Full control over lights, dosers, and schedules
+- **Web Dashboard**: Modern interface for device management
+- **Persistent Storage**: Configurations saved in Home Assistant data directory
+- **Bluetooth Integration**: Direct BLE communication with aquarium devices
 
 ## Installation
 
-### Prerequisites
+1. Add this repository to your Home Assistant Supervisor:
+   - Go to **Supervisor** → **Add-on Store** → **⋮** (top right) → **Repositories**
+   - Add: `https://github.com/caleb-venner/aquable`
 
-- Home Assistant 2024.1 or later
-- Bluetooth adapter (supported by Home Assistant)
-- Chihiros device with Bluetooth
+2. Install the **AquaBle** add-on from the store
 
-### Method 1: Official Add-on Store (Coming Soon)
+3. Start the add-on and check the logs for any errors
 
-Once available, install directly from **Settings** → **Add-ons & Backups** → **Add-on Store**
-
-### Method 2: Custom Repository
-
-1. Go to **Settings** → **Add-ons & Backups** → **Add-on Store** → **⋮**
-2. Select **Repositories**
-3. Add: `https://github.com/caleb-venner/aquable-addons`
-4. Search for **AquaBle** in the Add-on Store
-5. Click **Install**
-
-### Method 3: Manual Installation (Development)
-
-```bash
-ssh root@homeassistant.local
-cd /usr/share/hassio/addons/local
-git clone https://github.com/caleb-venner/aquable.git
-cp -r aquable/hassio/ ./aquable-addon/
-```
-
-Then in Home Assistant UI: **Settings** → **Add-ons & Backups** → **⋮** → **Reload**
+4. Access the web interface at `http://homeassistant.local:8000` (or your HA IP address)
 
 ## Configuration
 
-### Basic Configuration
-
 ```yaml
-log_level: INFO
-auto_discover: false
 auto_reconnect: true
-service_host: "0.0.0.0"
-service_port: 8000
+auto_discover: true
+status_wait_seconds: 1.5
+timezone: "auto"
 ```
 
-### Configuration Options
+### Options
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `log_level` | string | `INFO` | Logging level (TRACE/DEBUG/INFO/WARNING/ERROR/CRITICAL) |
-| `auto_discover` | boolean | `false` | Auto-scan for devices on startup |
-| `auto_reconnect` | boolean | `true` | Reconnect to cached devices |
-| `service_host` | string | `0.0.0.0` | HTTP server bind address |
-| `service_port` | integer | `8000` | Web interface port (8000-65535) |
-
-## Usage
-
-1. **Start the add-on:**
-   - Go to **Settings** → **Add-ons & Backups** → **AquaBle**
-   - Click **Start**
-
-2. **Access web interface:**
-   - Click **Open Web UI**, or
-   - Visit `http://homeassistant.local:8000`
-
-3. **Scan for devices:**
-   - Click **Scan for Devices** button
-   - Wait for scan to complete
-   - Select devices to connect
-
-## API Reference
-
-**Base URL:** `http://homeassistant.local:8000`
-
-### Device Operations
-
-- `GET /api/devices` - List all devices
-- `GET /api/devices/{address}` - Get device details
-- `POST /api/devices/{address}/command` - Send command to device
-- `GET /api/scan?timeout=5` - Scan for new devices
-
-### Configuration Management
-
-- `GET /api/configurations/dosers` - List doser configurations
-- `GET /api/configurations/lights` - List light configurations
-- `POST /api/configurations/dosers` - Create doser configuration
-- `POST /api/configurations/lights` - Create light configuration
-
-### Status
-
-- `GET /api/status` - System status
-- `GET /api/health` - Health check
-- `GET /api/configurations/summary` - Configuration summary
+- **auto_reconnect** (boolean, default: `true`): Automatically reconnect to devices when they become available
+- **auto_discover** (boolean, default: `true`): Automatically discover nearby Chihiros devices on startup
+- **status_wait_seconds** (float, 0.5-5.0, default: `1.5`): Time to wait for device status responses after commands
+- **timezone** (string, default: `"auto"`): Display timezone for schedules. Use "auto" to inherit from Home Assistant, or specify a timezone like "America/New_York"
 
 ## Supported Devices
 
 - Chihiros 4 Head Dosing Pump
+- Chihiros WRGB II / WRGB II Pro
 - Chihiros LED A2
-- Chihiros WRGB II (all variants)
 - Chihiros Tiny Terrarium Egg
 - Chihiros C II (RGB, White)
 - Chihiros Universal WRGB
 - Chihiros Z Light TINY
-- Other Chihiros Bluetooth-enabled devices (likely compatible)
+
+Other Chihiros devices may also work but are untested.
+
+## Usage
+
+### Web Dashboard
+
+Access the web interface at:
+```
+http://homeassistant.local:8000
+```
+
+The dashboard provides:
+- Device discovery and pairing
+- Manual control of lights and dosers
+- Schedule configuration
+- Device status monitoring
+
+### REST API
+
+The add-on exposes a REST API for integration with other services:
+
+```bash
+# Discover devices
+curl http://homeassistant.local:8000/api/devices/discover
+
+# Get device list
+curl http://homeassistant.local:8000/api/devices
+
+# Control a light (example)
+curl -X POST http://homeassistant.local:8000/api/devices/{address}/command \
+  -H "Content-Type: application/json" \
+  -d '{"command": "manual_brightness", "channel": 1, "brightness": 50}'
+```
+
+See the full API documentation at `http://homeassistant.local:8000/docs`
 
 ## Troubleshooting
 
-### Add-on won't start
+### Bluetooth Not Working
 
-- Check logs: **Settings** → **Add-ons & Backups** → **AquaBle** → **Logs**
-- Verify Bluetooth is available in **Settings** → **Devices & Services** → **Bluetooth**
-- Check disk space availability
+If devices are not discovered:
+1. Ensure your Home Assistant host has Bluetooth support
+2. Check that no other service is using the Bluetooth adapter
+3. Verify devices are powered on and in range
+4. Check add-on logs for connection errors
 
-### Devices not scanning
+### Devices Not Persisting
 
-- Ensure Bluetooth adapter is working: `hciconfig` in HA terminal
-- Move device closer to adapter
-- Verify device Bluetooth is enabled
+Device configurations are stored in `/data` within the add-on. This is persisted by Home Assistant Supervisor. If devices disappear after restart:
+1. Check add-on logs for storage errors
+2. Verify the add-on has write permissions to `/data`
 
-### Connection timeout
+### Performance Issues
 
-- Reduce environmental interference (other 2.4GHz devices)
-- Move closer to Bluetooth adapter
-- Increase scan timeout value
-
-### Permission denied errors
-
-- Add-on requires Bluetooth capability (automatic)
-- Restart add-on if permissions changed
-
-## Data Persistence
-
-Device configurations, metadata, and status are automatically saved to `/data`, which persists across restarts and updates.
-
-## Performance
-
-- **Memory:** ~150-250MB with multiple devices
-- **CPU:** Low usage, spikes during scanning
-- **Network:** Minimal, local Bluetooth only
+If the add-on is slow or unresponsive:
+1. Reduce `status_wait_seconds` to 1.0 or lower
+2. Disable `auto_discover` if you have many Bluetooth devices nearby
+3. Check system resources (CPU/memory) in Home Assistant
 
 ## Support
 
-- **Documentation:** [GitHub Project](https://github.com/caleb-venner/aquable)
-- **Issues:** [GitHub Issues](https://github.com/caleb-venner/aquable/issues)
-- **Discussions:** [GitHub Discussions](https://github.com/caleb-venner/aquable/discussions)
+- [GitHub Issues](https://github.com/caleb-venner/aquable/issues)
+- [Documentation](https://github.com/caleb-venner/aquable)
 
-## Legal
+## License
 
-This add-on is not affiliated with Chihiros or its parent company. It is an independent, open-source project created through reverse engineering.
+MIT License - See [LICENSE](https://github.com/caleb-venner/aquable/blob/main/LICENSE)
 
-See [LICENSE](../LICENSE) for full license information.
+## Disclaimer
+
+This project is not affiliated with, endorsed by, or approved by Chihiros Aquatic Studio. Use at your own risk.

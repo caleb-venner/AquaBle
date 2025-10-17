@@ -1,3 +1,6 @@
+# Standalone Docker deployment (deprecated)
+# Recommended: Use the Home Assistant add-on instead (see ../hassio/README.md)
+
 version: '3.8'
 
 services:

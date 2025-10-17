@@ -4,7 +4,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT) [![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/) [![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-teal)](https://fastapi.tiangolo.com/)
 
-AquaBle is a lightweight network service to discover and control Chihiros aquarium lights and dosing pumps over Bluetooth Low Energy. It exposes a REST API and a web dashboard for device discovery, command execution, and persistent configuration (schedules, profiles). Deploy as a Docker container, Home Assistant add-on, or install directly with Python.
+AquaBle is a lightweight network service to discover and control Chihiros aquarium lights and dosing pumps over Bluetooth Low Energy. It exposes a REST API and a web dashboard for device discovery, command execution, and persistent configuration (schedules, profiles). Deploy as a Home Assistant add-on or install directly with Python for development.
 
 **Current project state**: in very active development; expect further functionality and refinement soon.
 
@@ -34,9 +34,9 @@ AquaBle is a lightweight network service to discover and control Chihiros aquari
 
 - other Doser and LED models might work as well but are not tested
 
-## Future Deployment Options
+## Deployment Options
 
-This project will (shortly) support multiple deployment methods to fit different use cases:
+This project supports two deployment methods:
 
 ### Home Assistant Add-on (Recommended)
 
@@ -49,18 +49,7 @@ Perfect integration with Home Assistant for smart home automation.
 
 **[See Home Assistant setup guide](hassio/README.md)**
 
-### Docker Container
-
-Ideal for self-hosting, Unraid, or standalone deployment.
-
-- **Multi-architecture** support (amd64, arm64, armv7)
-- **Docker Compose** for easy setup
-- **Health monitoring** and automatic restarts
-- **Volume persistence** for device configurations
-
-**[See Docker setup guide](docker/README.md)**
-
-### Python Service
+### Python Service (Development)
 
 Direct installation for development or advanced users.
 
@@ -69,32 +58,31 @@ Direct installation for development or advanced users.
 - **Full control** over dependencies and configuration
 - **System service** integration available
 
-**[See local installation guide](#local-installation)**
+**[See local installation guide](#local-installation-development)**
 
 ## Requirements
 
 - Device with Bluetooth LE support
-- [Python 3.10+](https://www.python.org/downloads/) (for local installation)
+- [Python 3.10+](https://www.python.org/downloads/) (for local development)
 - Compatible Chihiros devices within Bluetooth range
 
 ## Quick Start
 
 ### Home Assistant Add-on
 
-```yaml
-# Add-on configuration
-log_level: INFO
-auto_discover: false
-auto_reconnect: true
-```
+1. Add this repository to your Home Assistant Supervisor:
+   - Go to **Supervisor** → **Add-on Store** → **⋮** (top right) → **Repositories**
+   - Add: `https://github.com/caleb-venner/aquable`
 
-### Docker
+2. Install the **AquaBle** add-on from the store
 
-```bash
-docker-compose -f docker/docker-compose.yml up -d
-```
+3. Configure options if needed (auto-discover, timezone, etc.)
 
-### Local Installation
+4. Start the add-on and access the web interface at `http://homeassistant.local:8000`
+
+See the [complete setup guide](hassio/README.md) for more details.
+
+### Local Installation (Development)
 
 Install the package and launch the bundled FastAPI/Uvicorn entrypoint:
 
@@ -174,24 +162,9 @@ Notes:
 - Changes to these variables require a service restart to take effect (they are read at module import or startup).
 - Configuration directory migration: If `~/.chihiros/` exists and `~/.aqua-ble/` doesn't, configs are automatically migrated to the new location on first startup.
 
-## Docker usage
+## Development
 
-Build and run the service inside a container:
-
-```bash
-docker build -t aquable .
-
-docker run \
-  --rm \
-  --name aquable \
-  --net=host \
-  --cap-add=NET_ADMIN \
-  --cap-add=SYS_ADMIN \
-  --device /dev/bus/usb \
-  aquable
-```
-
-The commands are sent as a byte array with the following structure:
+For local development and testing:
 
 | Command ID | 1 | Command Length | Message ID High | Message ID Low | Mode | Parameters | Checksum |
 | --- | --- | --- | --- | --- | --- | --- | --- |

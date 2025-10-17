@@ -28,8 +28,8 @@ dependencies = [
 ]
 
 [project.urls]
-"Source Code" = "https://github.com/calebvenner/aquable"
-"Bug Reports" = "https://github.com/calebvenner/aquable/issues"
+"Source Code" = "https://github.com/caleb-venner/aquable"
+"Bug Reports" = "https://github.com/caleb-venner/aquable/issues"
 "Original Project" = "https://github.com/TheMicDiet/chihiros-led-control"
 
 [tool.setuptools]

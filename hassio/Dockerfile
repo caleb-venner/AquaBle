@@ -1,54 +1,64 @@
-# Home Assistant Add-on Dockerfile
-# Builds AquaBle from source for Home Assistant
+# Home Assistant Add-on Dockerfile for AquaBle
+# This Dockerfile is optimized for Home Assistant Supervisor
 
 ARG BUILD_FROM
 FROM ${BUILD_FROM}
 
-# Install system dependencies for Bluetooth LE support
+# Set shell
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
+# Install system dependencies for Bluetooth and Python
 RUN apk add --no-cache \
     bluez \
     bluez-deprecated \
     dbus \
-    libglib \
-    gcc \
-    musl-dev \
-    linux-headers
+    python3 \
+    py3-pip \
+    nodejs \
+    npm \
+    build-base \
+    python3-dev \
+    linux-headers \
+    eudev-dev \
+    libffi-dev \
+    openssl-dev \
+    cargo \
+    rust
 
 # Set working directory
 WORKDIR /app
 
-# Copy project files (from repository root context)
-COPY pyproject.toml setup.cfg MANIFEST.in README.md ./
-COPY src/ ./src/
-COPY frontend/dist/ ./frontend/dist/
+# Copy project files
+COPY pyproject.toml setup.cfg MANIFEST.in ./
+COPY src/ src/
+COPY frontend/ frontend/
 
-# Install Python package in development mode
-RUN pip3 install --no-cache-dir -e .
+# Build frontend
+WORKDIR /app/frontend
+RUN npm ci && npm run build
 
-# Set Home Assistant add-on environment defaults
-ENV HASSIO=true \
-    AQUA_BLE_CONFIG_DIR=/data \
-    AQUA_BLE_FRONTEND_DIST=/app/frontend/dist \
-    PYTHONPATH=/app/src
+# Install Python package
+WORKDIR /app
+RUN pip3 install --no-cache-dir --upgrade pip setuptools wheel && \
+    pip3 install --no-cache-dir -e .
 
-# Copy add-on startup script
+# Environment variables
+ENV PYTHONPATH=/app/src
+ENV AQUA_BLE_CONFIG_DIR=/data
+ENV AQUA_BLE_FRONTEND_DIST=/app/frontend/dist
+ENV AQUA_BLE_SERVICE_HOST=0.0.0.0
+ENV AQUA_BLE_SERVICE_PORT=8000
+
+# Copy run script
 COPY hassio/run.sh /
 RUN chmod a+x /run.sh
 
-# Expose the web interface port
+# Expose port
 EXPOSE 8000
 
-# Health check for HA supervisor
+# Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
-    CMD curl -f http://localhost:8000/api/health || exit 1
+    CMD wget --no-verbose --tries=1 --spider http://localhost:8000/api/health || exit 1
 
-# Labels for Home Assistant add-on system
-LABEL \
-    io.hass.name="AquaBle" \
-    io.hass.description="Manage Chihiros aquarium devices via Bluetooth LE" \
-    io.hass.arch="armhf|aarch64|amd64|armv7" \
-    io.hass.type="addon" \
-    io.hass.version="1.0.0"
-
-# Default command
+# Run script
 CMD ["/run.sh"]

@@ -1,52 +1,53 @@
 #!/usr/bin/with-contenv bashio
+# shellcheck shell=bash
+set -e
 
-# ==============================================================================
-# Home Assistant Add-on: AquaBle
-# Starts the AquaBle service with HA configuration
-# ==============================================================================
+# Get configuration options from Home Assistant
+AUTO_RECONNECT=$(bashio::config 'auto_reconnect')
+AUTO_DISCOVER=$(bashio::config 'auto_discover')
+STATUS_WAIT=$(bashio::config 'status_wait_seconds')
+TIMEZONE=$(bashio::config 'timezone')
 
-# Read configuration from add-on options
-declare log_level
-declare auto_discover
-declare auto_reconnect
-declare service_host
-declare service_port
+# Set environment variables based on options
+export AQUA_BLE_AUTO_RECONNECT="${AUTO_RECONNECT}"
+export AQUA_BLE_AUTO_DISCOVER="${AUTO_DISCOVER}"
 
-log_level=$(bashio::config 'log_level')
-auto_discover=$(bashio::config 'auto_discover')
-auto_reconnect=$(bashio::config 'auto_reconnect')
-service_host=$(bashio::config 'service_host')
-service_port=$(bashio::config 'service_port')
-
-# Export environment variables
-export AQUA_BLE_LOG_LEVEL="${log_level}"
-export AQUA_BLE_AUTO_DISCOVER="${auto_discover}"
-export AQUA_BLE_AUTO_RECONNECT="${auto_reconnect}"
-export AQUA_BLE_SERVICE_HOST="${service_host}"
-export AQUA_BLE_SERVICE_PORT="${service_port}"
-export AQUA_BLE_CONFIG_DIR="/data"
-export AQUA_BLE_FRONTEND_DIST="/app/frontend/dist"
-export PYTHONPATH="/app/src"
-
-# Log startup information
-bashio::log.info "Starting AquaBle..."
-bashio::log.info "Log level: ${log_level}"
-bashio::log.info "Auto discover: ${auto_discover}"
-bashio::log.info "Auto reconnect: ${auto_reconnect}"
-bashio::log.info "Service: ${service_host}:${service_port}"
-bashio::log.info "Config directory: ${AQUA_BLE_CONFIG_DIR}"
-
-# Ensure data directory exists
-mkdir -p "${AQUA_BLE_CONFIG_DIR}"
-
-# Check if Bluetooth is available
-if ! bashio::services.available "bluetooth"; then
-    bashio::log.warning "Bluetooth service is not available!"
-    bashio::log.warning "Make sure Bluetooth is enabled in the add-on configuration."
+if bashio::config.has_value 'status_wait_seconds'; then
+    export AQUA_BLE_STATUS_WAIT="${STATUS_WAIT}"
 fi
 
-# Start the application
+# Handle timezone setting
+if [ "${TIMEZONE}" = "auto" ] || [ -z "${TIMEZONE}" ]; then
+    # Try to get timezone from Home Assistant
+    if bashio::config.exists 'timezone'; then
+        HA_TIMEZONE=$(bashio::info.timezone)
+        if [ -n "${HA_TIMEZONE}" ]; then
+            export AQUA_BLE_DISPLAY_TIMEZONE="${HA_TIMEZONE}"
+            bashio::log.info "Using Home Assistant timezone: ${HA_TIMEZONE}"
+        fi
+    fi
+else
+    export AQUA_BLE_DISPLAY_TIMEZONE="${TIMEZONE}"
+    bashio::log.info "Using configured timezone: ${TIMEZONE}"
+fi
+
+# Ensure Bluetooth is available
+if ! command -v hciconfig &> /dev/null; then
+    bashio::log.warning "Bluetooth tools not found, some functionality may be limited"
+else
+    bashio::log.info "Bluetooth available"
+fi
+
+# Log startup information
 bashio::log.info "Starting AquaBle service..."
-exec python -m uvicorn aquable.service:app \
-    --host "${service_host}" \
-    --port "${service_port}"
+bashio::log.info "Auto-reconnect: ${AUTO_RECONNECT}"
+bashio::log.info "Auto-discover: ${AUTO_DISCOVER}"
+bashio::log.info "Status wait: ${STATUS_WAIT}s"
+bashio::log.info "Config directory: ${AQUA_BLE_CONFIG_DIR}"
+
+# Start the service
+bashio::log.info "Launching uvicorn on port 8000..."
+exec python3 -m uvicorn aquable.service:app \
+    --host "${AQUA_BLE_SERVICE_HOST}" \
+    --port "${AQUA_BLE_SERVICE_PORT}" \
+    --no-access-log

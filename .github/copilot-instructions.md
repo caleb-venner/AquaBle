@@ -37,7 +37,6 @@
 
 **Deployment Options**:
 - Home Assistant Add-on (recommended): Automatic Bluetooth access, data persistence, web interface
-- Docker container: Multi-arch support, `docker-compose.yml` for easy setup
 - Direct Python installation: `pip install -e . && aqua-ble-service`
 
 ## Project Conventions
