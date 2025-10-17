@@ -65,7 +65,7 @@ jobs:
       - name: Build Home Assistant Add-on (amd64)
         uses: home-assistant/builder@master
         with:
-          path: hassio
+          working-directory: hassio
           args: |
             --amd64
             --target hassio
