@@ -35,7 +35,13 @@ COPY build/frontend/ frontend/
 
 # Build frontend
 WORKDIR /app/frontend
-RUN npm ci && npm run build
+# Use npm ci when a lockfile exists for reproducible installs; fall back to npm install otherwise.
+# This avoids build failures inside the add-on builder when package-lock.json is not present.
+RUN if [ -f package-lock.json ] || [ -f npm-shrinkwrap.json ]; then \
+            npm ci; \
+        else \
+            npm install; \
+        fi && npm run build
 
 # Install Python package
 WORKDIR /app
