@@ -1,0 +1,54 @@
+#!/usr/bin/with-contenv bashio
+# filepath: aquable/rootfs/etc/services.d/aquable/run
+
+bashio::log.info "Starting AquaBle service..."
+
+# Read configuration from add-on options
+export AQUA_BLE_AUTO_RECONNECT=$(bashio::config 'auto_reconnect')
+export AQUA_BLE_AUTO_DISCOVER=$(bashio::config 'auto_discover')
+export AQUA_BLE_STATUS_WAIT=$(bashio::config 'status_wait_seconds')
+export AQUA_BLE_VERBOSE_LOGGING=$(bashio::config 'verbose_logging')
+
+# Handle timezone configuration
+TIMEZONE=$(bashio::config 'timezone')
+if [[ "${TIMEZONE}" == "auto" ]]; then
+    # Get Home Assistant timezone via API
+    bashio::log.info "Timezone set to 'auto', fetching from Home Assistant..."
+    API_RESPONSE=$(bashio::api.supervisor GET /info 2>&1)
+    TIMEZONE=$(echo "${API_RESPONSE}" | jq -r '.timezone // empty' 2>/dev/null)
+    
+    if [[ -z "${TIMEZONE}" ]]; then
+        bashio::log.warning "Failed to get timezone from Home Assistant API"
+        bashio::log.warning "API Response: ${API_RESPONSE}"
+        bashio::log.warning "Falling back to UTC"
+        TIMEZONE="UTC"
+    else
+        bashio::log.info "Using Home Assistant timezone: ${TIMEZONE}"
+    fi
+fi
+export TZ="${TIMEZONE}"
+
+# Set paths for add-on environment
+export AQUA_BLE_CONFIG_DIR=/data
+export AQUA_BLE_FRONTEND_DIST=/app/frontend/dist
+export PYTHONPATH=/app/src
+
+# Configure Bleak/BlueZ
+export DBUS_SYSTEM_BUS_ADDRESS=unix:path=/run/dbus/system_bus_socket
+
+# Determine if running in Ingress mode (SUPERVISOR_TOKEN is set by Home Assistant)
+if [[ -n "${SUPERVISOR_TOKEN}" ]]; then
+    SERVICE_PORT=8099
+    bashio::log.info "Running in Ingress mode on port ${SERVICE_PORT}"
+else
+    SERVICE_PORT=8000
+    bashio::log.info "Running in standalone mode on port ${SERVICE_PORT}"
+fi
+
+bashio::log.info "Configuration loaded - starting service"
+bashio::log.info "System timezone: ${TIMEZONE}"
+bashio::log.info "D-Bus address: ${DBUS_SYSTEM_BUS_ADDRESS}"
+
+# Start the service - using exec to replace the shell process
+cd /app
+exec python3 -m aquable.service 2>&1

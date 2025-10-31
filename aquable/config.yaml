@@ -1,0 +1,38 @@
+name: AquaBle
+version: "2.1.0"
+slug: aquable
+description: Control Chihiros aquarium lights and dosing pumps over Bluetooth Low Energy
+url: https://github.com/caleb-venner/aquable
+image: ghcr.io/caleb-venner/{arch}-aquable
+arch:
+  - amd64
+startup: application
+boot: auto
+init: false
+host_network: true
+host_dbus: true
+privileged:
+  - SYS_ADMIN
+# Ingress provides seamless access via Home Assistant UI
+ingress: true
+ingress_port: 8099
+map:
+  - config:rw
+options:
+  auto_reconnect: true
+  auto_discover: true
+  status_wait_seconds: 1.5
+  timezone: "auto"
+  ping_interval: 300
+  verbose_logging: false
+schema:
+  auto_reconnect: bool
+  auto_discover: bool
+  status_wait_seconds: float(0.5,5.0)?
+  timezone: str?
+  ping_interval: int?
+  verbose_logging: bool?
+bluetooth: true
+hassio_api: true
+hassio_role: default
+homeassistant_api: false

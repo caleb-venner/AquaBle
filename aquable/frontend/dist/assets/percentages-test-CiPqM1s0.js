@@ -1,0 +1,18 @@
+import{c as W}from"./wattage-calculator-aI2XEFfd.js";const e=[{red:50,green:50,blue:50,white:50,expected:67,name:"Test 1: 50% All Channels"},{red:75,green:75,blue:75,white:75,expected:100,name:"Test 2: 75% All Channels"},{red:100,green:100,blue:100,white:100,expected:138,name:"Test 3: 100% All Channels"},{red:100,green:100,blue:100,white:0,expected:117,name:"Test 4: RGB (no White)"},{red:100,green:100,blue:0,white:100,expected:118,name:"Test 5: RGW (no Blue)"},{red:100,green:0,blue:100,white:100,expected:87,name:"Test 6: RBW (no Green)"},{red:0,green:100,blue:100,white:100,expected:104,name:"Test 7: GBW (no Red)"},{red:136,green:88,blue:110,white:55,expected:138,name:"Test 8: Mixed High (Power Limited)"},{red:76,green:127,blue:103,white:65,expected:138,name:"Test 9: Mixed High (Power Limited)"},{red:120,green:113,blue:121,white:0,expected:138,name:"Test 10: RGB High (Power Limited)"},{red:130,green:88,blue:126,white:50,expected:138,name:"Test 11: Mixed High (Power Limited)"},{red:127,green:88,blue:136,white:46,expected:138,name:"Test 12: Mixed High (Power Limited)"},{red:140,green:0,blue:140,white:0,expected:92,name:"Test 13: Red+Blue 140%"},{red:140,green:0,blue:0,white:140,expected:104,name:"Test 14: Red+White 140%"},{red:136,green:140,blue:0,white:0,expected:138,name:"Test 15: Red+Green High (Power Limited)"},{red:39,green:61,blue:105,white:52,expected:82,name:"Test 16: Mixed Low-Medium"}];window.runAllTests=m;window.clearResults=x;function m(){let o=0,r=0,l=0,n=0,c="";e.forEach((t,T)=>{const i=W({red:t.red,green:t.green,blue:t.blue,white:t.white}),g=i.requestedWattage,w=i.powerLimited,$=i.totalWattage,u=t.expected,h=g-u,a=Math.abs(h);let s="far",d="❌ OFF";a===0?(o++,r++,l++,n++,s="exact",d="✅ EXACT"):a<=1?(r++,l++,n++,s="close1",d="🟡 ±1W"):a<=2?(l++,n++,s="close2",d="🟠 ±2W"):a<=5&&(n++,s="close5",d="🔶 ±5W"),c+=`<div class="test ${s}">
+                    <strong>${t.name}</strong><br>
+                    Input: R:${t.red}% G:${t.green}% B:${t.blue}% W:${t.white}%<br>
+                    Expected: ${u}W | Calculated: ${g}W | Difference: ${h>0?"+":""}${h}W ${d}<br>
+                    <small>Step: ${i.stepSum}W | Embedded: ${i.embeddedBaseSum}W | Shared: ${i.sharedBase}W | ${w?`Power Limited: ${g}W → ${$}W`:"No Power Limiting"}</small>
+                </div>`});const p=`
+                <h2>Test Results Summary</h2>
+                <p><strong>Total Tests:</strong> ${e.length}</p>
+                <p><strong>Exact Matches:</strong> ${o}/${e.length} (${Math.round(o/e.length*100)}%)</p>
+                <p><strong>Within ±1W:</strong> ${r}/${e.length} (${Math.round(r/e.length*100)}%)</p>
+                <p><strong>Within ±2W:</strong> ${l}/${e.length} (${Math.round(l/e.length*100)}%)</p>
+                <p><strong>Within ±5W:</strong> ${n}/${e.length} (${Math.round(n/e.length*100)}%)</p>
+
+                <h3>Algorithm Status</h3>
+                <p>Testing algorithm calculations (before power limiting) vs expected values.</p>
+                <p><strong>Note:</strong> Power-limited tests show calculated value → final limited value.</p>
+            `;document.getElementById("results").innerHTML=c,document.getElementById("summary").innerHTML=p,document.getElementById("summary").style.display="block",console.log("Test Results:"),console.log(`Exact matches: ${o}/${e.length}`),console.log(`Within 1W: ${r}/${e.length}`),console.log(`Within 2W: ${l}/${e.length}`),console.log(`Within 5W: ${n}/${e.length}`)}function x(){document.getElementById("results").innerHTML="",document.getElementById("summary").style.display="none"}document.addEventListener("DOMContentLoaded",()=>{setTimeout(m,500)});
+//# sourceMappingURL=percentages-test-CiPqM1s0.js.map
