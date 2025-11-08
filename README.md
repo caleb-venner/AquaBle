@@ -1,5 +1,9 @@
 # AquaBle
 
+![AquaBle banner](aquable/logo.png)
+
+[![License: GPLv3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0) [![Home Assistant Add-on](https://img.shields.io/badge/Home_Assistant-Add--on-blue)](https://www.home-assistant.io/) [![Python 3.10+](https://img.shields.io/badge/Python-3.10+-blue)](https://www.python.org/)
+
 *pronounced* "AK-wuh-bul" (/ˈækwə//bəl/)
 
 **Current project state: in very active development, at a very early stage.** *Expect further functionality and refinement soon.*
