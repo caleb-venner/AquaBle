@@ -1,9 +1,12 @@
-name: Release to Stable Repository
+name: Release to Main Branch
 
 on:
   push:
     tags:
       - 'v*'
+
+permissions:
+  contents: write
 
 jobs:
   build-and-push:
@@ -50,14 +53,14 @@ jobs:
             --all \
             --version ${{ steps.version.outputs.version }}
 
-  sync-to-stable:
+  sync-to-main:
     needs: build-and-push
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout dev repository
+      - name: Checkout source tag
         uses: actions/checkout@v4
         with:
-          path: dev
+          path: source
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -66,71 +69,39 @@ jobs:
 
       - name: Build frontend
         run: |
-          cd dev/frontend
+          cd source/frontend
           npm ci
           npm run build
 
-      - name: Checkout stable repository
+      - name: Checkout main branch
         uses: actions/checkout@v4
         with:
-          repository: caleb-venner/AquaBle
-          path: stable
-          token: ${{ secrets.PAT || secrets.GITHUB_TOKEN }}
+          path: main
+          token: ${{ secrets.GITHUB_TOKEN }}
           ref: main
-        continue-on-error: true
 
-      - name: Initialize stable repository if needed
+      - name: Sync files to main branch
         run: |
-          if [ ! -d "stable/.git" ]; then
-            echo "Initializing new stable repository..."
-            mkdir -p stable
-            cd stable
-            git init
-            git config user.name 'github-actions[bot]'
-            git config user.email 'github-actions[bot]@users.noreply.github.com'
-            git remote add origin https://x-access-token:${{ secrets.PAT }}@github.com/caleb-venner/AquaBle.git
-            git checkout -b main
-          fi
-
-      - name: Sync files to stable repository
-        run: |
-          # Selectively sync only the add-on files we maintain from dev
-          # This preserves any stable-repo-specific files (docs, configs, etc.)
+          # Selectively sync only the add-on files we maintain from the source tag
+          # This preserves any main-branch-specific files (docs, configs, etc.)
           
           # Copy add-on structure (remove old aquable/ dir first to clean stale files)
-          rm -rf stable/aquable
-          mkdir -p stable/aquable
-          cp -r dev/aquable/* stable/aquable/
+          rm -rf main/aquable
+          mkdir -p main/aquable
+          cp -r source/aquable/* main/aquable/
           
           # Copy built frontend to add-on directory
-          mkdir -p stable/aquable/frontend
-          cp -r dev/frontend/dist stable/aquable/frontend/
+          mkdir -p main/aquable/frontend
+          cp -r source/frontend/dist main/aquable/frontend/
           
           # Copy source code to add-on directory (needed for Dockerfile build context)
-          cp -r dev/src stable/aquable/
-          
-          # Copy root files that should be synced from dev
-          cp dev/pyproject.toml stable/
-          cp dev/LICENSE stable/
-          
-          # Copy README to root for GitHub display (overwrite is intentional)
-          cp dev/aquable/README.stable.md stable/README.md
-          
-          # Create repository.yaml ONLY if it doesn't exist
-          # This allows the stable repo to maintain its own repository.yaml
-          if [ ! -f stable/repository.yaml ]; then
-            cat > stable/repository.yaml << EOF
-          name: AquaBle Add-on
-          url: https://github.com/caleb-venner/AquaBle
-          maintainer: Caleb Venner <caleb.venner@gmail.com>
-          EOF
-          fi
+          cp -r source/src main/aquable/
 
-      - name: Commit and push to stable repository
+      - name: Commit and push to main branch
         run: |
-          cd stable
+          cd main
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
           git add .
           git commit -m "Release ${{ github.ref_name }}" || echo "No changes to commit"
-          git push -u origin main || git push --force origin main
+          git push origin main

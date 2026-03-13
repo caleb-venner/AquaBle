@@ -30,9 +30,7 @@ class HAEntity(BaseModel):
 class HAConfig(BaseModel):
     """Home Assistant configuration"""
 
-    entities: List[HAEntity] = Field(
-        default_factory=list, description="Configured entities"
-    )
+    entities: List[HAEntity] = Field(default_factory=list, description="Configured entities")
 
 
 class HAConfigStorage:

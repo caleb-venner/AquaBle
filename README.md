@@ -2,38 +2,17 @@
 
 *pronounced* "AK-wuh-bul" (/ˈækwə//bəl/)
 
-> **⚠️ This is the development repository. For stable releases and installation instructions, please visit:**
+> **This is the development branch.**
 >
-> ## **👉 [AquaBle Stable Repository](https://github.com/caleb-venner/AquaBle)**
 
 ---
 
-## About This Repository
-
-This is the **development repository** for AquaBle. It contains:
+This is the **development branch** for AquaBle. It contains:
 
 - Source code for both backend and frontend
 - Development tools and scripts
 - Test suites
 - Build configurations
-- Active development branches
-
-**If you're looking to install and use AquaBle**, please go to the [stable repository](https://github.com/caleb-venner/AquaBle) which contains the production-ready Home Assistant add-on.
-
-## For Developers
-
-If you want to contribute or develop AquaBle:
-
-1. Clone this repository
-2. See `aquable/DOCS.md` for development setup
-3. Use `make dev` to run the full development stack
-4. Submit pull requests to the `dev` branch
-
-### Development Workflow
-
-- **Development**: Work happens in this `AquaBle-dev` repository
-- **Releases**: Tagged releases automatically build and deploy to the [AquaBle](https://github.com/caleb-venner/AquaBle) stable repository
-- **Users**: Install from the stable repository
 
 ---
 
