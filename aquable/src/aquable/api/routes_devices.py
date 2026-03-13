@@ -6,6 +6,7 @@ from typing import Any, Dict
 
 from fastapi import APIRouter, HTTPException, Request
 
+from ..ble_service import raw_ble_scan
 from ..device import get_device_from_address
 from ..utils import cached_status_to_dict
 from .exceptions import (  # device_not_reachable,
@@ -54,6 +55,19 @@ async def scan_devices(request: Request, timeout: float = 5.0) -> list[Dict[str,
             status_code=503,
             detail=f"Bluetooth scan failed: {str(e)}",
         ) from e
+
+
+@router.get("/debug/ble-scan")
+async def debug_ble_scan(timeout: float = 5.0) -> Dict[str, Any]:
+    """Raw BLE diagnostic scan — returns every device seen by BlueZ, unfiltered.
+
+    Use this to determine whether the Bluetooth stack can see any devices at all.
+    If 'total_devices' is 0 and there is no error, the host's Bluetooth adapter
+    cannot see the target devices (common when using an ESPHome Bluetooth proxy,
+    which is a virtual adapter managed by Home Assistant's Bluetooth integration
+    and is NOT visible to BlueZ / BleakScanner directly).
+    """
+    return await raw_ble_scan(timeout=timeout)
 
 
 @router.post("/devices/{address}/status")
