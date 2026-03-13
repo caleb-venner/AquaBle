@@ -1,6 +1,7 @@
 """Module defining Chihiros devices."""
 
 import inspect
+import re
 import sys
 from typing import Type
 
@@ -30,6 +31,11 @@ for name, obj in inspect.getmembers(sys.modules[__name__]):
     if inspect.isclass(obj) and issubclass(obj, BaseDevice):
         for model_code in obj._model_codes:
             CODE2MODEL[model_code] = obj
+
+# Common aliases/abbreviations seen in discovery payloads.
+MODEL_CODE_ALIASES = {
+    "DYDOS": "DYDOSE",
+}
 
 
 def get_ble_device_name(ble_device: BLEDevice) -> str | None:
@@ -83,11 +89,20 @@ def get_model_class_from_name(
 ) -> Type[BaseDevice]:
     """Get device class name from device name."""
     normalized_name = device_name.strip().upper()
+    compact_name = re.sub(r"[^A-Z0-9]", "", normalized_name)
 
     # Prefer longest model codes first so prefixes do not collide.
     for model_code in sorted(CODE2MODEL.keys(), key=len, reverse=True):
-        if normalized_name.startswith(model_code):
+        if normalized_name.startswith(model_code) or model_code in normalized_name:
             return CODE2MODEL[model_code]
+        if compact_name.startswith(model_code) or model_code in compact_name:
+            return CODE2MODEL[model_code]
+
+    for alias_code, canonical_code in MODEL_CODE_ALIASES.items():
+        if alias_code in normalized_name or alias_code in compact_name:
+            model_class = CODE2MODEL.get(canonical_code)
+            if model_class is not None:
+                return model_class
 
     raise DeviceNotFoundError(device_name, details={"reason": "Device model code not found"})
 

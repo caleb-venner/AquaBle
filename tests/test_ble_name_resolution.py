@@ -72,6 +72,18 @@ def test_get_model_class_from_name_matches_full_broadcast_name() -> None:
     assert model.__name__ == "WRGBIIPro"
 
 
+def test_get_model_class_from_name_matches_hyphenated_name_format() -> None:
+    """Model detection should work for HA/HACS style hyphenated names."""
+    model = get_model_class_from_name("WRGB II Pro-DYWPR120-ABC123")
+    assert model.__name__ == "WRGBIIPro"
+
+
+def test_get_model_class_from_name_matches_doser_alias_code() -> None:
+    """Model detection should handle short DYDOS alias observed in some payloads."""
+    model = get_model_class_from_name("Dosing Pump-DYDOS-ABC123")
+    assert model.__name__ == "Doser"
+
+
 @pytest.mark.asyncio
 async def test_get_device_from_address_uses_resolved_name(monkeypatch: pytest.MonkeyPatch) -> None:
     """Connection lookup should also use metadata.local_name fallback."""
