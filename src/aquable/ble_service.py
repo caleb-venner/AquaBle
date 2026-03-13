@@ -25,7 +25,7 @@ from fastapi import HTTPException
 from . import utils as _utils
 from .commands import ops as device_commands
 from .constants import BLE_STATUS_CAPTURE_WAIT
-from .device import get_device_from_address, get_model_class_from_name
+from .device import get_ble_device_name, get_device_from_address, get_model_class_from_name
 from .device.base_device import BaseDevice
 from .errors import DeviceNotFoundError
 from .utils import get_config_dir, get_env_bool, get_env_float, get_env_int
@@ -106,7 +106,7 @@ def filter_supported_devices(
     """
     supported: list[SupportedDeviceInfo] = []
     for device in devices:
-        name = device.name
+        name = get_ble_device_name(device)
         if not name:
             continue
         try:
@@ -649,11 +649,12 @@ class BLEService:
             if device.address in connected_addresses:
                 continue
             device_type = self._get_device_kind(model_class) or "unknown"
+            resolved_name = get_ble_device_name(device)
             result.append(
                 {
                     "address": device.address,
-                    "name": device.name,
-                    "product": getattr(model_class, "model_name", device.name),
+                    "name": resolved_name,
+                    "product": getattr(model_class, "model_name", resolved_name),
                     "device_type": device_type,
                 }
             )
