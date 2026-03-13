@@ -24,7 +24,7 @@ RUN apk add --no-cache \
     py3-pip \
     curl
 # Install Python dependencies
-RUN SETUPTOOLS_SCM_PRETEND_VERSION=${AQUA_BLE_VERSION} \
+RUN SETUPTOOLS_SCM_PRETEND_VERSION_FOR_AQUABLE=${AQUA_BLE_VERSION} \
     python3 -m pip install --no-cache-dir --break-system-packages -e .
 
 # Copy S6 service configuration
