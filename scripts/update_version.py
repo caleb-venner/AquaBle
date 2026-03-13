@@ -60,7 +60,7 @@ def main() -> int:
     replace_or_fail(
         repo_root / "src" / "aquable" / "service.py",
         r'("version":\s*")[^"]+(")',
-        rf'\1{args.version}\2',
+        rf"\g<1>{args.version}\g<2>",
     )
     update_package_json(repo_root / "frontend" / "package.json", args.version)
     update_package_lock(repo_root / "frontend" / "package-lock.json", args.version)
