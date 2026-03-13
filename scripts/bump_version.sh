@@ -34,25 +34,9 @@ if [[ ! $REPLY =~ ^[Yy]$ ]]; then
     exit 1
 fi
 
-# Update pyproject.toml
-echo "📝 Updating pyproject.toml..."
-sed -i '' "s/^version = \".*\"/version = \"$NEW_VERSION\"/" pyproject.toml
-
-# Update aquable/config.yaml
-echo "📝 Updating aquable/config.yaml..."
-sed -i '' "s/^version: \".*\"/version: \"$NEW_VERSION\"/" aquable/config.yaml
-
-# Update frontend/package.json
-echo "📝 Updating frontend/package.json..."
-sed -i '' "s/\"version\": \".*\"/\"version\": \"$NEW_VERSION\"/" frontend/package.json
-
-# Update service.py health check
-echo "📝 Updating src/aquable/service.py..."
-sed -i '' "s/\"version\": \".*\"/\"version\": \"$NEW_VERSION\"/" src/aquable/service.py
-
-# Update package-lock.json
-echo "📝 Updating frontend/package-lock.json..."
-cd frontend && npm install --package-lock-only && cd ..
+# Update versioned files
+echo "📝 Updating versioned files..."
+python scripts/update_version.py "$NEW_VERSION"
 
 # Update CHANGELOG
 echo "📝 Adding entry to aquable/CHANGELOG.md..."
@@ -109,6 +93,7 @@ echo "📋 Files updated:"
 echo "   • pyproject.toml"
 echo "   • aquable/config.yaml"
 echo "   • frontend/package.json"
+echo "   • aquable/build.yaml"
 echo "   • frontend/package-lock.json"
 echo "   • src/aquable/service.py"
 echo "   • aquable/CHANGELOG.md"

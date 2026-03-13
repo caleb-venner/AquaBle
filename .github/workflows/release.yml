@@ -20,6 +20,9 @@ jobs:
         id: version
         run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
 
+      - name: Update versions from tag
+        run: python scripts/update_version.py "${{ steps.version.outputs.version }}"
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -65,6 +68,15 @@ jobs:
         uses: actions/checkout@v4
         with:
           path: source
+
+      - name: Extract version from tag
+        id: version
+        run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Update versions from tag
+        run: |
+          cd source
+          python scripts/update_version.py "${{ steps.version.outputs.version }}"
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
