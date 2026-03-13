@@ -16,12 +16,12 @@ COPY frontend/dist /app/frontend/dist
 COPY src /app/src
 COPY pyproject.toml /app/
 
-# Install system dependencies for Bluetooth support
+# Install system dependencies for Bluetooth support and healthcheck
 RUN apk add --no-cache \
     bluez \
     dbus \
-    py3-pip
-
+    py3-pip \
+    curl
 # Install Python dependencies
 RUN SETUPTOOLS_SCM_PRETEND_VERSION=2.0.0 \
     python3 -m pip install --no-cache-dir --break-system-packages -e .
