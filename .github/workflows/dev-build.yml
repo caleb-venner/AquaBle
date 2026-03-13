@@ -10,6 +10,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     name: Build add-on
+    env:
+      COSIGN_VERSION: v2.6.0
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -33,6 +35,11 @@ jobs:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3
+        with:
+          cosign-release: 'v2.6.0'
 
       - name: Build and push dev image (amd64 only)
         uses: home-assistant/builder@master
