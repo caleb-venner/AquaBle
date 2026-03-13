@@ -1,5 +1,6 @@
 # Multi-stage build for Home Assistant add-on
 ARG BUILD_FROM=ghcr.io/home-assistant/amd64-base-python:3.13-alpine3.21
+ARG AQUA_BLE_VERSION=dev
 
 # Frontend is pre-built locally and copied directly
 
@@ -23,7 +24,7 @@ RUN apk add --no-cache \
     py3-pip \
     curl
 # Install Python dependencies
-RUN SETUPTOOLS_SCM_PRETEND_VERSION=2.0.0 \
+RUN SETUPTOOLS_SCM_PRETEND_VERSION=${AQUA_BLE_VERSION} \
     python3 -m pip install --no-cache-dir --break-system-packages -e .
 
 # Copy S6 service configuration
