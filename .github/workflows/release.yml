@@ -12,8 +12,6 @@ permissions:
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
-    env:
-      COSIGN_VERSION: v2.6.0
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -39,6 +37,10 @@ jobs:
           cp -r frontend/dist aquable/frontend/
           cp -r src aquable/
           cp pyproject.toml aquable/
+          cp build.yaml aquable/
+          cp config.yaml aquable/
+          cp Dockerfile aquable/
+          cp -r rootfs aquable/
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
@@ -47,14 +49,14 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Install cosign
-        uses: sigstore/cosign-installer@main
-
       - name: Build and push multi-arch images
-        uses: home-assistant/builder@master
-        with:
-          args: |
-            --target aquable \
+        run: |
+          docker run --rm --privileged \
+            -v /var/run/docker.sock:/var/run/docker.sock:ro \
+            -v ~/.docker:/root/.docker \
+            -v ${{ github.workspace }}:/data \
+            ghcr.io/home-assistant/amd64-builder:latest \
+            --target /data/aquable \
             --docker-hub ghcr.io/${{ github.repository_owner }} \
             --amd64 --aarch64 \
             --version ${{ steps.version.outputs.version }}
@@ -88,20 +90,18 @@ jobs:
 
       - name: Sync files to main branch
         run: |
-          # Selectively sync only the add-on files we maintain from the source tag
-          # This preserves any main-branch-specific files (docs, configs, etc.)
-          
-          # Copy add-on structure (remove old aquable/ dir first to clean stale files)
           rm -rf main/aquable
           mkdir -p main/aquable
           cp -r source/aquable/* main/aquable/
           
-          # Copy built frontend to add-on directory
           mkdir -p main/aquable/frontend
           cp -r source/frontend/dist main/aquable/frontend/
           
-          # Copy source code to add-on directory (needed for Dockerfile build context)
           cp -r source/src main/aquable/
+          cp source/build.yaml main/aquable/
+          cp source/config.yaml main/aquable/
+          cp source/Dockerfile main/aquable/
+          cp -r source/rootfs main/aquable/
 
       - name: Commit and push to main branch
         run: |
