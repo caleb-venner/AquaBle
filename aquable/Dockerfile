@@ -7,6 +7,9 @@ ARG AQUA_BLE_VERSION=dev
 # Main add-on image
 FROM ${BUILD_FROM}
 
+# Re-declare build args for this stage so they are available to RUN commands.
+ARG AQUA_BLE_VERSION=dev
+
 # Set working directory
 WORKDIR /app
 
