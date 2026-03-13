@@ -109,6 +109,26 @@ def get_model_class_from_name(
 
 async def get_device_from_address(device_address: str) -> BaseDevice:
     """Get BLEDevice object from mac address."""
+    # 1. Try ESPHome proxy cache first (proxy-only setups won't find devices via BlueZ)
+    from ..esphome_proxy import get_proxy_manager
+    from bleak_esphome.backend.client import ESPHomeClient
+
+    proxy = get_proxy_manager()
+    if proxy is not None and proxy.is_running and proxy.client_data is not None:
+        entry = proxy.get_ble_device(device_address)
+        if entry is not None:
+            ble_dev, adv_data = entry
+            resolved_name = get_ble_device_name(ble_dev) or getattr(adv_data, "local_name", None)
+            if resolved_name:
+                model_class = get_model_class_from_name(resolved_name)
+                return model_class(  # type: ignore[call-arg]
+                    ble_dev,
+                    adv_data,
+                    client_class=ESPHomeClient,
+                    client_kwargs={"client_data": proxy.client_data},
+                )
+
+    # 2. Fall back to BlueZ / BleakScanner
     ble_dev = await BleakScanner.find_device_by_address(device_address)
     if ble_dev:
         resolved_name = get_ble_device_name(ble_dev)
@@ -118,8 +138,7 @@ async def get_device_from_address(device_address: str) -> BaseDevice:
                 details={"reason": "BLE device has no resolvable name"},
             )
         model_class = get_model_class_from_name(resolved_name)
-        dev: BaseDevice = model_class(ble_dev)
-        return dev
+        return model_class(ble_dev)
 
     raise DeviceNotFoundError(device_address)
 

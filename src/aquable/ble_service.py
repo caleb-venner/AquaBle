@@ -28,6 +28,7 @@ from .commands import ops as device_commands
 from .constants import BLE_STATUS_CAPTURE_WAIT
 from .device import get_ble_device_name, get_device_from_address, get_model_class_from_name
 from .device.base_device import BaseDevice
+from .esphome_proxy import ESPHomeProxyManager, get_proxy_manager, set_proxy_manager
 from .errors import DeviceNotFoundError
 from .utils import get_config_dir, get_env_bool, get_env_float, get_env_int
 
@@ -45,6 +46,10 @@ AUTO_RECONNECT_ENV = "AQUA_BLE_AUTO_RECONNECT"
 STATUS_CAPTURE_WAIT_ENV = "AQUA_BLE_STATUS_WAIT"
 AUTO_DISCOVER_ENV = "AQUA_BLE_AUTO_DISCOVER"
 AUTO_SAVE_ENV = "AQUA_BLE_AUTO_SAVE"
+CONNECTION_MODE_ENV = "AQUA_BLE_CONNECTION_MODE"
+ESPHOME_HOST_ENV = "AQUA_BLE_ESPHOME_HOST"
+ESPHOME_PASSWORD_ENV = "AQUA_BLE_ESPHOME_API_PASSWORD"
+ESPHOME_NOISE_PSK_ENV = "AQUA_BLE_ESPHOME_NOISE_PSK"
 
 # Get status capture wait with fallback
 STATUS_CAPTURE_WAIT_SECONDS = get_env_float(STATUS_CAPTURE_WAIT_ENV, BLE_STATUS_CAPTURE_WAIT)
@@ -64,6 +69,14 @@ try:
     logger.setLevel(getattr(logging, _default_level, logging.INFO))
 except Exception:
     logger.setLevel(logging.INFO)
+
+
+def _connection_mode() -> str:
+    mode = (os.getenv(CONNECTION_MODE_ENV, "auto") or "auto").strip().lower()
+    if mode not in {"auto", "local", "esphome"}:
+        logger.warning("Invalid %s=%s; falling back to auto", CONNECTION_MODE_ENV, mode)
+        return "auto"
+    return mode
 
 
 @asynccontextmanager
@@ -141,34 +154,53 @@ async def discover_supported_devices(
 
     Returns empty list if Bluetooth is unavailable or disabled.
     """
-    try:
+    mode = _connection_mode()
+    by_address: dict[str, SupportedDeviceInfo] = {}
+
+    if mode in {"auto", "esphome"}:
+        proxy = get_proxy_manager()
+        if proxy is not None and proxy.is_running:
+            proxy_entries = proxy.get_all_devices()
+            logger.debug("ESPHome proxy discovery returned %d entries", len(proxy_entries))
+            for dev, model in filter_supported_devices(proxy_entries):
+                by_address[dev.address.upper()] = (dev, model)
+        elif mode == "esphome":
+            logger.warning("ESPHome mode enabled but proxy manager is not running")
+
+    if mode in {"auto", "local"}:
         try:
-            discovered_with_adv = await BleakScanner.discover(timeout=timeout, return_adv=True)
-        except TypeError:
-            discovered = await BleakScanner.discover(timeout=timeout)
-            logger.debug("BLE discovery returned %d entries (legacy mode)", len(discovered))
-            return filter_supported_devices(discovered)
+            try:
+                discovered_with_adv = await BleakScanner.discover(timeout=timeout, return_adv=True)
+            except TypeError:
+                discovered = await BleakScanner.discover(timeout=timeout)
+                logger.debug("BLE discovery returned %d entries (legacy mode)", len(discovered))
+                for dev, model in filter_supported_devices(discovered):
+                    by_address.setdefault(dev.address.upper(), (dev, model))
+                return list(by_address.values())
 
-        if isinstance(discovered_with_adv, dict):
-            logger.debug(
-                "BLE discovery returned %d entries with advertisement data",
-                len(discovered_with_adv),
-            )
-            return filter_supported_devices(discovered_with_adv.values())
+            if isinstance(discovered_with_adv, dict):
+                logger.debug(
+                    "BLE discovery returned %d entries with advertisement data",
+                    len(discovered_with_adv),
+                )
+                bluez_entries = discovered_with_adv.values()
+            else:
+                logger.debug("BLE discovery returned %d entries", len(discovered_with_adv))
+                bluez_entries = discovered_with_adv
 
-        logger.debug("BLE discovery returned %d entries", len(discovered_with_adv))
-        return filter_supported_devices(discovered_with_adv)
-    except Exception as e:
-        # Bluetooth controller not found, disabled, or other hardware issues
-        error_msg = str(e).lower()
-        if "bluetooth device is turned off" in error_msg or "not available" in error_msg:
-            logger.warning("Bluetooth is disabled or unavailable: %s", e)
-        elif "adapter" in error_msg or "controller" in error_msg or "no such file" in error_msg:
-            logger.warning("Bluetooth adapter/controller not found: %s", e)
-        else:
-            logger.warning("Bluetooth discovery failed: %s", e)
-        # Return empty list to allow service to continue running
-        return []
+            for dev, model in filter_supported_devices(bluez_entries):
+                by_address.setdefault(dev.address.upper(), (dev, model))
+        except Exception as e:
+            # Bluetooth controller not found, disabled, or other hardware issues
+            error_msg = str(e).lower()
+            if "bluetooth device is turned off" in error_msg or "not available" in error_msg:
+                logger.warning("Bluetooth is disabled or unavailable: %s", e)
+            elif "adapter" in error_msg or "controller" in error_msg or "no such file" in error_msg:
+                logger.warning("Bluetooth adapter/controller not found: %s", e)
+            else:
+                logger.warning("Bluetooth discovery failed: %s", e)
+
+    return list(by_address.values())
 
 
 async def raw_ble_scan(timeout: float = 5.0) -> dict:
@@ -185,6 +217,7 @@ async def raw_ble_scan(timeout: float = 5.0) -> dict:
 
     result: dict = {
         "adapter": "BlueZ (direct)",
+        "connection_mode": _connection_mode(),
         "total_devices": 0,
         "devices": [],
         "error": None,
@@ -267,6 +300,11 @@ class BLEService:
         self._ping_task: asyncio.Task | None = None
         self._auto_save_config = get_env_bool(AUTO_SAVE_ENV, True)
         self._ping_interval = get_env_int("AQUA_BLE_PING_INTERVAL", 300)
+        self._connection_mode = _connection_mode()
+        self._esphome_host = (os.getenv(ESPHOME_HOST_ENV, "") or "").strip()
+        self._esphome_password = os.getenv(ESPHOME_PASSWORD_ENV, "") or ""
+        self._esphome_noise_psk = os.getenv(ESPHOME_NOISE_PSK_ENV, "") or ""
+        self._proxy_manager: ESPHomeProxyManager | None = None
 
         # Ensure config directory exists
         CONFIG_DIR.mkdir(parents=True, exist_ok=True)
@@ -685,6 +723,25 @@ class BLEService:
 
     async def start(self) -> None:
         """Start background tasks and load persisted state."""
+        if self._connection_mode in {"auto", "esphome"} and self._esphome_host:
+            try:
+                self._proxy_manager = ESPHomeProxyManager(
+                    host=self._esphome_host,
+                    password=self._esphome_password,
+                    noise_psk=self._esphome_noise_psk,
+                )
+                await self._proxy_manager.start()
+                set_proxy_manager(self._proxy_manager)
+                logger.info("ESPHome proxy mode active via host %s", self._esphome_host)
+            except Exception as exc:
+                logger.warning("ESPHome proxy initialization failed: %s", exc)
+                self._proxy_manager = None
+                set_proxy_manager(None)
+        elif self._connection_mode == "esphome":
+            logger.warning(
+                "Connection mode is esphome but no %s configured", ESPHOME_HOST_ENV
+            )
+
         await self._load_state()
         # Count devices from storage instead of cache
         device_count = len(self._list_all_devices())
@@ -743,6 +800,11 @@ class BLEService:
                 for device in kind_devices.values():
                     await device.disconnect()
             self._devices.clear()
+
+        set_proxy_manager(None)
+        if self._proxy_manager is not None:
+            await self._proxy_manager.stop()
+            self._proxy_manager = None
 
     async def scan_devices(self, timeout: float = 5.0) -> list[Dict[str, Any]]:
         """Scan for BLE devices and return those matching known models."""

@@ -24,6 +24,10 @@ map:
 options:
   auto_reconnect: true
   auto_discover: true
+  connection_mode: "auto"
+  esphome_host: ""
+  esphome_api_password: ""
+  esphome_noise_psk: ""
   status_wait_seconds: 1.5
   timezone: "auto"
   ping_interval: 300
@@ -31,6 +35,10 @@ options:
 schema:
   auto_reconnect: bool
   auto_discover: bool
+  connection_mode: list(auto|local|esphome)?
+  esphome_host: str?
+  esphome_api_password: str?
+  esphome_noise_psk: str?
   status_wait_seconds: float(0.5,5.0)?
   timezone: str?
   ping_interval: int?

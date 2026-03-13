@@ -64,12 +64,16 @@ class BaseDevice(ABC):
         self,
         ble_device: BLEDevice,
         advertisement_data: AdvertisementData | None = None,
+        client_class: type | None = None,
+        client_kwargs: dict | None = None,
     ) -> None:
         """Create a new device."""
         self._ble_device = ble_device
         self._logger = logging.getLogger(ble_device.address.replace(":", "-"))
         self._advertisement_data = advertisement_data
-        self._client: BleakClientWithServiceCache | None = None
+        self._client: Any | None = None
+        self._client_class: type = client_class or BleakClientWithServiceCache
+        self._client_kwargs: dict = client_kwargs or {}
         self._disconnect_timer: asyncio.TimerHandle | None = None
         self._operation_lock: asyncio.Lock = asyncio.Lock()
         self._read_char: BleakGATTCharacteristic | None = None
@@ -389,13 +393,14 @@ class BaseDevice(ABC):
                 self.rssi,
             )
             client = await establish_connection(
-                BleakClientWithServiceCache,
+                self._client_class,
                 self._ble_device,
                 self.name,
                 self._disconnected,
                 max_attempts=3,
                 use_services_cache=True,
                 ble_device_callback=lambda: self._ble_device,
+                **self._client_kwargs,
             )
             self._logger.debug(
                 "%s: Connected; RSSI: %s",

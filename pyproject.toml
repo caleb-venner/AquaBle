@@ -17,6 +17,8 @@ requires-python = ">=3.10"
 dependencies = [
     "bleak==0.22.3",
     "bleak_retry_connector==3.9.0",
+    "bleak-esphome==3.7.1",
+    "aioesphomeapi==44.5.1",
     "typer[all]==0.15.2",
     "rich==13.9.4",
     "fastapi==0.115.0",

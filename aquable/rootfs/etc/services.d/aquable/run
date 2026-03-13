@@ -6,6 +6,10 @@ bashio::log.info "Starting AquaBle service..."
 # Read configuration from add-on options
 export AQUA_BLE_AUTO_RECONNECT=$(bashio::config 'auto_reconnect')
 export AQUA_BLE_AUTO_DISCOVER=$(bashio::config 'auto_discover')
+export AQUA_BLE_CONNECTION_MODE=$(bashio::config 'connection_mode')
+export AQUA_BLE_ESPHOME_HOST=$(bashio::config 'esphome_host')
+export AQUA_BLE_ESPHOME_API_PASSWORD=$(bashio::config 'esphome_api_password')
+export AQUA_BLE_ESPHOME_NOISE_PSK=$(bashio::config 'esphome_noise_psk')
 export AQUA_BLE_STATUS_WAIT=$(bashio::config 'status_wait_seconds')
 export AQUA_BLE_VERBOSE_LOGGING=$(bashio::config 'verbose_logging')
 
