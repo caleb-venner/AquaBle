@@ -23,7 +23,8 @@ RUN apk add --no-cache \
     py3-pip
 
 # Install Python dependencies
-RUN SETUPTOOLS_SCM_PRETEND_VERSION=2.0.0 pip3 install --no-cache-dir -e .
+RUN SETUPTOOLS_SCM_PRETEND_VERSION=2.0.0 \
+    python3 -m pip install --no-cache-dir --break-system-packages -e .
 
 # Copy S6 service configuration
 COPY rootfs/ /
