@@ -23,7 +23,10 @@ RUN apk add --no-cache \
     bluez \
     dbus \
     py3-pip \
-    curl
+    curl \
+    build-base \
+    python3-dev \
+    libffi-dev
 
 RUN if [ -n "${AQUA_BLE_VERSION}" ]; then \
     python3 -c 'import os,re; from pathlib import Path; version=os.environ.get("AQUA_BLE_VERSION","").strip(); path=Path("/app/pyproject.toml"); text=path.read_text(encoding="utf-8"); updated, matches = re.subn(r"^version = \\".*\\"$", f"version = \\"{version}\\"", text, flags=re.MULTILINE); if matches == 0: raise SystemExit("Version field not found in /app/pyproject.toml"); path.write_text(updated, encoding="utf-8"); print(f"Updated pyproject.toml version to {version}")'; \
