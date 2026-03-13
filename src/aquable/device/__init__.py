@@ -110,8 +110,9 @@ def get_model_class_from_name(
 async def get_device_from_address(device_address: str) -> BaseDevice:
     """Get BLEDevice object from mac address."""
     # 1. Try ESPHome proxy cache first (proxy-only setups won't find devices via BlueZ)
-    from ..esphome_proxy import get_proxy_manager
     from bleak_esphome.backend.client import ESPHomeClient
+
+    from ..esphome_proxy import get_proxy_manager
 
     proxy = get_proxy_manager()
     if proxy is not None and proxy.is_running and proxy.client_data is not None:

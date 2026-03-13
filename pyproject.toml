@@ -14,8 +14,8 @@ readme = "README.md"
 requires-python = ">=3.10"
 
 dependencies = [
-    "bleak==0.22.3",
-    "bleak_retry_connector==3.9.0",
+    "bleak==1.0.1",
+    "bleak_retry_connector==4.2.0",
     "bleak-esphome==3.7.1",
     "aioesphomeapi==44.5.1",
     "typer[all]==0.15.2",

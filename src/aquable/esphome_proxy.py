@@ -11,7 +11,6 @@ Bluetooth proxy rather than a USB Bluetooth adapter directly on the host.
 
 from __future__ import annotations
 
-import asyncio
 import logging
 from typing import Callable
 
@@ -19,7 +18,7 @@ from aioesphomeapi import BluetoothLEAdvertisement
 from aioesphomeapi.client import APIClient
 from bleak.backends.device import BLEDevice
 from bleak.backends.scanner import AdvertisementData
-from bleak_esphome.backend.client import ESPHomeClient, ESPHomeClientData
+from bleak_esphome.backend.client import ESPHomeClientData
 from bleak_esphome.backend.device import ESPHomeBluetoothDevice
 
 logger = logging.getLogger("aquable.esphome_proxy")
@@ -105,9 +104,7 @@ class ESPHomeProxyManager:
         try:
             await api.connect(login=True)
         except Exception as exc:
-            logger.error(
-                "Failed to connect to ESPHome proxy at %s: %s", self._host, exc
-            )
+            logger.error("Failed to connect to ESPHome proxy at %s: %s", self._host, exc)
             raise
 
         try:
@@ -121,9 +118,7 @@ class ESPHomeProxyManager:
             raise
 
         source = device_info.bluetooth_mac_address or device_info.mac_address
-        logger.info(
-            "Connected to ESPHome proxy: %s (BT MAC: %s)", device_info.name, source
-        )
+        logger.info("Connected to ESPHome proxy: %s (BT MAC: %s)", device_info.name, source)
 
         bluetooth_device = ESPHomeBluetoothDevice(
             name=device_info.name,
@@ -138,9 +133,7 @@ class ESPHomeProxyManager:
         )
 
         # Subscribe to BLE advertisements to keep the device cache fresh.
-        self._unsub_adv = api.subscribe_bluetooth_le_advertisements(
-            self._on_advertisement
-        )
+        self._unsub_adv = api.subscribe_bluetooth_le_advertisements(self._on_advertisement)
 
         if api.api_version is None:
             raise RuntimeError("ESPHome API version unavailable after connect")
@@ -187,9 +180,7 @@ class ESPHomeProxyManager:
         adv_data = _adv_to_advertisement_data(adv)
         self._device_cache[ble_device.address.upper()] = (ble_device, adv_data)
 
-    def get_ble_device(
-        self, address: str
-    ) -> tuple[BLEDevice, AdvertisementData] | None:
+    def get_ble_device(self, address: str) -> tuple[BLEDevice, AdvertisementData] | None:
         """Return a cached (BLEDevice, AdvertisementData) by MAC address."""
         return self._device_cache.get(address.upper())
 

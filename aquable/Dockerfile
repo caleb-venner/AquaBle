@@ -9,6 +9,8 @@ FROM ${BUILD_FROM}
 # Set working directory
 WORKDIR /app
 
+ARG AQUA_BLE_VERSION
+
 # Copy pre-built frontend artifacts
 COPY frontend/dist /app/frontend/dist
 
@@ -22,6 +24,25 @@ RUN apk add --no-cache \
     dbus \
     py3-pip \
     curl
+
+RUN if [ -n "${AQUA_BLE_VERSION}" ]; then \
+    python3 - <<'PY'
+import os
+import re
+from pathlib import Path
+
+version = os.environ.get("AQUA_BLE_VERSION", "").strip()
+path = Path("/app/pyproject.toml")
+text = path.read_text(encoding="utf-8")
+updated, matches = re.subn(r'^version = ".*"$', f'version = "{version}"', text, flags=re.MULTILINE)
+if matches == 0:
+    raise SystemExit("Version field not found in /app/pyproject.toml")
+path.write_text(updated, encoding="utf-8")
+print(f"Updated pyproject.toml version to {version}")
+PY
+  ; else \
+    echo "AQUA_BLE_VERSION not set; using pyproject.toml version"; \
+  fi
 # Install Python dependencies
 RUN python3 -m pip install --no-cache-dir --break-system-packages -e .
 

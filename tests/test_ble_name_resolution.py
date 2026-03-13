@@ -41,9 +41,7 @@ def test_filter_supported_devices_uses_local_name() -> None:
         metadata={"local_name": "UnknownDevice123"},
     )
 
-    result = filter_supported_devices(
-        [cast(BLEDevice, supported), cast(BLEDevice, unsupported)]
-    )
+    result = filter_supported_devices([cast(BLEDevice, supported), cast(BLEDevice, unsupported)])
 
     assert len(result) == 1
     assert result[0][0].address == "E4:3A:D5:3A:D8:02"

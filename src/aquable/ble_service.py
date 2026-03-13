@@ -28,8 +28,8 @@ from .commands import ops as device_commands
 from .constants import BLE_STATUS_CAPTURE_WAIT
 from .device import get_ble_device_name, get_device_from_address, get_model_class_from_name
 from .device.base_device import BaseDevice
-from .esphome_proxy import ESPHomeProxyManager, get_proxy_manager, set_proxy_manager
 from .errors import DeviceNotFoundError
+from .esphome_proxy import ESPHomeProxyManager, get_proxy_manager, set_proxy_manager
 from .utils import get_config_dir, get_env_bool, get_env_float, get_env_int
 
 # Re-implement lightweight internal API functions (previously in core_api)
@@ -211,9 +211,8 @@ async def raw_ble_scan(timeout: float = 5.0) -> dict:
     If this returns an empty list, the issue is at the hardware/adapter layer
     (e.g. the host is using an ESPHome Bluetooth proxy which BlueZ cannot see).
     """
-    from .device import get_ble_device_name
+    from .device import get_ble_device_name, get_model_class_from_name
     from .errors import DeviceNotFoundError
-    from .device import get_model_class_from_name
 
     result: dict = {
         "adapter": "BlueZ (direct)",
@@ -232,7 +231,7 @@ async def raw_ble_scan(timeout: float = 5.0) -> dict:
         if isinstance(discovered_with_adv, dict):
             entries = discovered_with_adv.values()
         else:
-            entries = {d.address: (d, None) for d in discovered_with_adv}.values()  # type: ignore[assignment]
+            entries = {d.address: (d, None) for d in discovered_with_adv}.values()
 
         all_devices = list(entries)
         result["total_devices"] = len(all_devices)
@@ -738,9 +737,7 @@ class BLEService:
                 self._proxy_manager = None
                 set_proxy_manager(None)
         elif self._connection_mode == "esphome":
-            logger.warning(
-                "Connection mode is esphome but no %s configured", ESPHOME_HOST_ENV
-            )
+            logger.warning("Connection mode is esphome but no %s configured", ESPHOME_HOST_ENV)
 
         await self._load_state()
         # Count devices from storage instead of cache
