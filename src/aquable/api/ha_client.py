@@ -5,9 +5,9 @@ Provides access to Home Assistant supervisor API for entity control.
 Requires SUPERVISOR_TOKEN environment variable (automatically provided in add-on mode).
 """
 
-import os
 import logging
-from typing import Optional, Dict, Any
+import os
+from typing import Any, Dict, Optional
 
 import httpx
 
@@ -132,7 +132,7 @@ class HAClient:
         try:
             # Extract script name from entity_id (e.g., "script.water_change" -> "water_change")
             script_name = entity_id.split(".", 1)[1]
-            
+
             client = await self._get_client()
             url = f"{self.base_url}/services/script/{script_name}"
             response = await client.post(url, headers=self._get_headers(), json={})

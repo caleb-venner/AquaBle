@@ -63,3 +63,6 @@ extend-exclude = [
 
 [tool.doc8]
 max-line-length = 100
+
+[tool.uv.extra-build-dependencies]
+pyobjc-framework-libdispatch = ["setuptools<81"]

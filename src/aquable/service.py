@@ -20,6 +20,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 # This ensures all log entries include timestamps
 try:
     from .logging_config import configure_logging
+
     configure_logging()
 except Exception:
     # If logging config import fails, continue anyway

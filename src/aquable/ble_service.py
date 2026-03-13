@@ -55,6 +55,7 @@ _default_level = (os.getenv("AQUA_BLE_LOG_LEVEL", "INFO") or "INFO").upper()
 # The main service will configure unified logging at startup
 if not logging.getLogger().handlers:
     from .logging_config import configure_logging
+
     configure_logging()
 
 try:
@@ -558,7 +559,7 @@ class BLEService:
                     updated_at=last_status.get("updated_at", 0.0),
                 )
                 snapshot[device_info["device_id"]] = cached
-        
+
         # Now, overlay the status of currently connected devices
         for kind, device_dict in self._devices.items():
             for address, device in device_dict.items():

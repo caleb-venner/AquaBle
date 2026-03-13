@@ -8,11 +8,11 @@ Usage:
     At application startup (in main() or service initialization):
     >>> from aquable.logging_config import configure_logging
     >>> configure_logging()
-    
+
     When starting uvicorn:
     >>> from aquable.logging_config import get_uvicorn_log_config
     >>> uvicorn.run(app, log_config=get_uvicorn_log_config())
-    
+
     For development:
     >>> python3 dev_server.py  # Uses unified logging automatically
 
@@ -42,7 +42,7 @@ def get_log_level() -> str:
 
 def get_logging_config() -> Dict[str, Any]:
     """Generate a unified logging configuration dictionary.
-    
+
     This configuration ensures:
     - All log entries include timestamps
     - Consistent format across application and uvicorn
@@ -51,17 +51,17 @@ def get_logging_config() -> Dict[str, Any]:
     - Access logs (health/status checks) only shown in verbose mode or on errors
     """
     log_level = get_log_level()
-    
+
     # Check for verbose logging flag (set by Home Assistant add-on config)
     verbose_logging = os.getenv("AQUA_BLE_VERBOSE_LOGGING", "false").lower() in ("true", "1", "yes")
-    
+
     # Set access log level: INFO for verbose mode, WARNING otherwise
     access_log_level = log_level if verbose_logging else "WARNING"
-    
+
     # Unified format with timestamp
     log_format = "%(asctime)s %(levelname)-5s [%(name)s] %(message)s"
     date_format = "%Y-%m-%d %H:%M:%S"
-    
+
     return {
         "version": 1,
         "disable_existing_loggers": False,
@@ -119,13 +119,13 @@ def get_logging_config() -> Dict[str, Any]:
 
 def configure_logging() -> None:
     """Configure logging for the entire application.
-    
+
     This should be called once at application startup, before any other
     logging configuration or logger creation.
     """
     config = get_logging_config()
     logging.config.dictConfig(config)
-    
+
     # Set timezone-aware timestamps if TZ environment variable is set
     tz = os.getenv("TZ")
     if tz:
@@ -136,7 +136,7 @@ def configure_logging() -> None:
 
 def get_uvicorn_log_config() -> Dict[str, Any]:
     """Get uvicorn-specific log configuration.
-    
+
     This configuration is used when starting uvicorn to ensure it uses
     the unified logging format.
     """

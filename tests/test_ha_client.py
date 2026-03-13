@@ -3,9 +3,10 @@ Tests for Home Assistant API client
 """
 
 import os
-import pytest
-from unittest.mock import AsyncMock, patch, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import httpx
+import pytest
 
 from aquable.api.ha_client import HAClient, get_ha_client
 
@@ -57,15 +58,15 @@ class TestHAClientGetState:
         mock_response = MagicMock()
         mock_response.json.return_value = {
             "state": "on",
-            "attributes": {"friendly_name": "Test Switch"}
+            "attributes": {"friendly_name": "Test Switch"},
         }
         mock_response.raise_for_status = MagicMock()
 
-        with patch.object(ha_client, '_get_client', return_value=AsyncMock()) as mock_client:
+        with patch.object(ha_client, "_get_client", return_value=AsyncMock()) as mock_client:
             mock_client.return_value.get = AsyncMock(return_value=mock_response)
-            
+
             result = await ha_client.get_state("switch.test")
-            
+
             assert result is not None
             assert result["state"] == "on"
             assert result["attributes"]["friendly_name"] == "Test Switch"
@@ -77,11 +78,11 @@ class TestHAClientGetState:
         mock_response.status_code = 404
         error = httpx.HTTPStatusError("Not found", request=MagicMock(), response=mock_response)
 
-        with patch.object(ha_client, '_get_client', return_value=AsyncMock()) as mock_client:
+        with patch.object(ha_client, "_get_client", return_value=AsyncMock()) as mock_client:
             mock_client.return_value.get = AsyncMock(side_effect=error)
-            
+
             result = await ha_client.get_state("switch.nonexistent")
-            
+
             assert result is None
 
     @pytest.mark.asyncio
@@ -100,11 +101,11 @@ class TestHAClientToggleSwitch:
         mock_response = MagicMock()
         mock_response.raise_for_status = MagicMock()
 
-        with patch.object(ha_client, '_get_client', return_value=AsyncMock()) as mock_client:
+        with patch.object(ha_client, "_get_client", return_value=AsyncMock()) as mock_client:
             mock_client.return_value.post = AsyncMock(return_value=mock_response)
-            
+
             result = await ha_client.toggle_switch("switch.test")
-            
+
             assert result is True
 
     @pytest.mark.asyncio
@@ -129,11 +130,11 @@ class TestHAClientExecuteScript:
         mock_response = MagicMock()
         mock_response.raise_for_status = MagicMock()
 
-        with patch.object(ha_client, '_get_client', return_value=AsyncMock()) as mock_client:
+        with patch.object(ha_client, "_get_client", return_value=AsyncMock()) as mock_client:
             mock_client.return_value.post = AsyncMock(return_value=mock_response)
-            
+
             result = await ha_client.execute_script("script.test_routine")
-            
+
             assert result is True
 
     @pytest.mark.asyncio

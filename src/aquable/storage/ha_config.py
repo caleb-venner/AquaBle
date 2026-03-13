@@ -7,7 +7,8 @@ Manages persistent storage of configured Home Assistant entities in ~/.aquable/h
 import json
 import logging
 from pathlib import Path
-from typing import List, Dict, Any, Optional, Literal
+from typing import List, Literal, Optional
+
 from pydantic import BaseModel, Field
 
 from ..utils.env import get_config_dir
@@ -20,6 +21,7 @@ EntityType = Literal["switch", "script"]
 
 class HAEntity(BaseModel):
     """Home Assistant entity configuration"""
+
     entity_id: str = Field(..., description="Entity ID (e.g., switch.aquarium_pump)")
     label: str = Field(..., description="User-friendly label")
     type: EntityType = Field(..., description="Entity type (switch or script)")
@@ -27,7 +29,10 @@ class HAEntity(BaseModel):
 
 class HAConfig(BaseModel):
     """Home Assistant configuration"""
-    entities: List[HAEntity] = Field(default_factory=list, description="Configured entities")
+
+    entities: List[HAEntity] = Field(
+        default_factory=list, description="Configured entities"
+    )
 
 
 class HAConfigStorage:
@@ -42,10 +47,10 @@ class HAConfigStorage:
         """
         if base_path is None:
             base_path = get_config_dir()
-        
+
         self.base_path = base_path
         self.config_file = base_path / "ha_entities.json"
-        
+
         # Ensure directory exists
         self.base_path.mkdir(parents=True, exist_ok=True)
 
@@ -102,7 +107,7 @@ class HAConfigStorage:
             True if successful, False otherwise
         """
         config = self.load()
-        
+
         # Check if entity already exists
         if any(e.entity_id == entity_id for e in config.entities):
             logger.warning(f"Entity already exists: {entity_id}")
@@ -111,7 +116,7 @@ class HAConfigStorage:
         # Add new entity
         entity = HAEntity(entity_id=entity_id, label=label, type=entity_type)
         config.entities.append(entity)
-        
+
         return self.save(config)
 
     def remove_entity(self, entity_id: str) -> bool:
@@ -125,11 +130,11 @@ class HAConfigStorage:
             True if successful, False otherwise
         """
         config = self.load()
-        
+
         # Filter out the entity
         original_count = len(config.entities)
         config.entities = [e for e in config.entities if e.entity_id != entity_id]
-        
+
         if len(config.entities) == original_count:
             logger.warning(f"Entity not found: {entity_id}")
             return False

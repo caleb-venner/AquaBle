@@ -147,23 +147,27 @@ async def get_device_configurations(request: Request, address: str):
         raise HTTPException(status_code=404, detail=f"No configuration found for device {address}")
 
     # For light devices, augment auto programs with live status
-    if device_type == "light" and device.get("activeConfigurationId") and device.get("configurations"):
+    if (
+        device_type == "light"
+        and device.get("activeConfigurationId")
+        and device.get("configurations")
+    ):
         active_config_id = device.get("activeConfigurationId")
         configurations = device.get("configurations", [])
-        active_config = next(
-            (c for c in configurations if c.get("id") == active_config_id), None
-        )
+        active_config = next((c for c in configurations if c.get("id") == active_config_id), None)
         if active_config and active_config.get("revisions"):
             latest_revision = active_config["revisions"][-1]
             if latest_revision.get("profile") and latest_revision["profile"].get("mode") == "auto":
                 programs = latest_revision["profile"].get("programs", [])
                 programs_with_status = get_schedules_with_status(programs)
-                
+
                 for config_dict in device.get("configurations", []):
                     if config_dict.get("id") == active_config_id:
                         if "revisions" in config_dict and config_dict["revisions"]:
-                            config_dict["revisions"][-1]["profile"]["programs"] = programs_with_status
-                
+                            config_dict["revisions"][-1]["profile"][
+                                "programs"
+                            ] = programs_with_status
+
                 logger.info(f"Augmented light programs with status for {address}")
                 return JSONResponse(content=device, headers=headers)
 

@@ -4,12 +4,13 @@
 AQUA_BLE_AUTO_DISCOVER ?= 0
 export AQUA_BLE_AUTO_DISCOVER
 
-.PHONY: help dev dev-front dev-back build front-build lint test precommit clean local bump-version
+.PHONY: help dev dev-front dev-back build front-build install lint test precommit clean local bump-version
 
 help:
 	@echo "make dev        # run frontend (vite) and backend (uvicorn)"
 	@echo "make dev-front  # run frontend dev server"
 	@echo "make dev-back   # run backend with uvicorn"
+	@echo "make install    # install backend deps into .venv with uv"
 	@echo "make build      # build frontend and python wheel"
 	@echo "make front-build# build frontend only"
 	@echo "make lint       # run pre-commit on all files"
@@ -21,11 +22,24 @@ help:
 	@echo "make bump-version VERSION=x.y.z # bump version across all files"
 
 VENV?=.venv
+UV?=uv
 PY?=python3
+UV_PYTHON?=3.12
+UV_PYTHON_INSTALL?=1
+VENV_BIN?=$(VENV)/bin
+VENV_PY?=$(VENV_BIN)/python
+VENV_STAMP?=$(VENV)/.uv-venv-$(UV_PYTHON)
 
-$(VENV)/bin/activate:
-	$(PY) -m venv $(VENV)
-	. $(VENV)/bin/activate; pip install -U pip
+$(VENV_STAMP):
+	@if [ "$(UV_PYTHON_INSTALL)" = "1" ]; then \
+		$(UV) python install $(UV_PYTHON); \
+	fi
+	UV_VENV_CLEAR=1 $(UV) venv --python $(UV_PYTHON) $(VENV)
+	@touch $(VENV_STAMP)
+
+install: $(VENV_STAMP)
+	$(UV) pip install --python $(VENV_PY) 'setuptools<81'
+	$(UV) pip install --no-build-isolation --python $(VENV_PY) -e .
 
 # Frontend
 
@@ -37,8 +51,8 @@ front-build:
 
 # Backend
 
-dev-back:
-	PYTHONPATH=src AQUA_BLE_AUTO_RECONNECT=1 uvicorn aquable.service:app --reload --host 0.0.0.0 --port 8000
+dev-back: install
+	PYTHONPATH=src AQUA_BLE_AUTO_RECONNECT=1 $(VENV_BIN)/uvicorn aquable.service:app --reload --host 0.0.0.0 --port 8000
 
 # Combined
 
@@ -48,27 +62,36 @@ dev:
 
 # Build & quality
 
-build: front-build
-	$(PY) -m build
+build: front-build install
+	@if ! $(VENV_PY) -c "import build" >/dev/null 2>&1; then \
+		$(UV) pip install --python $(VENV_PY) build; \
+	fi
+	$(VENV_PY) -m build
 
-lint:
-	@if ! command -v doc8 >/dev/null 2>&1; then \
+lint: install
+	@if [ ! -x "$(VENV_BIN)/doc8" ]; then \
 		echo "Installing linting tools (black, flake8, isort, doc8)"; \
-		$(PY) -m pip install black flake8 isort doc8 flake8-pyprojecttoml; \
+		$(UV) pip install --python $(VENV_PY) black flake8 isort doc8 flake8-pyprojecttoml; \
 	fi
 	@echo "Running code quality checks..."
-	black src/ tests/ frontend/
-	isort --profile black src/ tests/ frontend/
-	flake8 src/ tests/ frontend/
-	doc8 README.md aquable/DOCS.md
+	$(VENV_BIN)/black src/ tests/ frontend/
+	$(VENV_BIN)/isort --profile black src/ tests/ frontend/
+	$(VENV_BIN)/flake8 src/ tests/ frontend/
+	$(VENV_BIN)/doc8 README.md aquable/DOCS.md
 
 precommit:
 	@echo "Pre-commit hooks removed - use 'make lint' for code quality checks"
 
 # Tests
 
-test:
-	pytest -q
+test: install
+	@if [ ! -x "$(VENV_BIN)/pytest" ]; then \
+		$(UV) pip install --python $(VENV_PY) pytest pytest-asyncio; \
+	fi
+	@if ! $(VENV_PY) -c "import pytest_asyncio" >/dev/null 2>&1; then \
+		$(UV) pip install --python $(VENV_PY) pytest-asyncio; \
+	fi
+	$(VENV_BIN)/pytest -q
 
 # Local add-on testing
 

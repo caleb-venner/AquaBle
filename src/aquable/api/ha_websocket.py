@@ -4,11 +4,11 @@ Home Assistant WebSocket Client
 Provides real-time state updates for Home Assistant switch entities via WebSocket.
 """
 
-import os
 import asyncio
-import logging
-from typing import Optional, Callable, Dict, Any, Set
 import json
+import logging
+import os
+from typing import Any, Callable, Dict, Optional, Set
 
 import websockets
 
@@ -63,10 +63,10 @@ class HAWebSocketClient:
     async def disconnect(self):
         """Disconnect from Home Assistant WebSocket API"""
         self._running = False
-        
+
         if self._ws and not self._ws.closed:
             await self._ws.close()
-        
+
         if self._task:
             self._task.cancel()
             try:
@@ -74,7 +74,7 @@ class HAWebSocketClient:
             except asyncio.CancelledError:
                 pass
             self._task = None
-        
+
         logger.info("Stopped Home Assistant WebSocket client")
 
     async def _run(self):
@@ -100,21 +100,18 @@ class HAWebSocketClient:
             # Authenticate
             auth_msg = await ws.recv()
             auth_data = json.loads(auth_msg)
-            
+
             if auth_data.get("type") != "auth_required":
                 logger.error(f"Unexpected auth message: {auth_data}")
                 return
 
             # Send authentication
-            await ws.send(json.dumps({
-                "type": "auth",
-                "access_token": self.token
-            }))
+            await ws.send(json.dumps({"type": "auth", "access_token": self.token}))
 
             # Wait for auth result
             auth_result = await ws.recv()
             auth_result_data = json.loads(auth_result)
-            
+
             if auth_result_data.get("type") != "auth_ok":
                 logger.error(f"Authentication failed: {auth_result_data}")
                 return
@@ -144,9 +141,9 @@ class HAWebSocketClient:
         subscribe_msg = {
             "id": self._msg_id,
             "type": "subscribe_events",
-            "event_type": "state_changed"
+            "event_type": "state_changed",
         }
-        
+
         await self._ws.send(json.dumps(subscribe_msg))
         self._msg_id += 1
         self._subscribed = True
@@ -155,11 +152,11 @@ class HAWebSocketClient:
     async def _handle_message(self, data: Dict[str, Any]):
         """Handle incoming WebSocket message"""
         msg_type = data.get("type")
-        
+
         if msg_type == "event":
             event = data.get("event", {})
             event_type = event.get("event_type")
-            
+
             if event_type == "state_changed":
                 await self._handle_state_changed(event)
         elif msg_type == "result":
@@ -172,13 +169,13 @@ class HAWebSocketClient:
         """Handle state_changed event"""
         event_data = event.get("data", {})
         entity_id = event_data.get("entity_id", "")
-        
+
         # Only process switch entities
         if not entity_id.startswith("switch."):
             return
 
         new_state = event_data.get("new_state", {})
-        
+
         # Notify callbacks
         for callback in self._callbacks:
             try:
