@@ -37,10 +37,6 @@ jobs:
           cp -r frontend/dist aquable/frontend/
           cp -r src aquable/
           cp pyproject.toml aquable/
-          cp build.yaml aquable/
-          cp config.yaml aquable/
-          cp Dockerfile aquable/
-          cp -r rootfs aquable/
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
@@ -98,10 +94,7 @@ jobs:
           cp -r source/frontend/dist main/aquable/frontend/
           
           cp -r source/src main/aquable/
-          cp source/build.yaml main/aquable/
-          cp source/config.yaml main/aquable/
-          cp source/Dockerfile main/aquable/
-          cp -r source/rootfs main/aquable/
+          cp source/pyproject.toml main/aquable/
 
       - name: Commit and push to main branch
         run: |
