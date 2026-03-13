@@ -1,7 +1,6 @@
 [build-system]
 requires = [
     "setuptools==76.0.0",
-    "setuptools_scm[toml]==8.2.0",
     "wheel==0.45.1",
 ]
 build-backend = "setuptools.build_meta"
@@ -43,8 +42,6 @@ package-dir = {"" = "src"}
 where = [
   "src",
 ]
-
-[tool.setuptools_scm]
 
 [tool.black]
 line-length = 100
