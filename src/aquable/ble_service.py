@@ -171,6 +171,86 @@ async def discover_supported_devices(
         return []
 
 
+async def raw_ble_scan(timeout: float = 5.0) -> dict:
+    """Return all BLE devices seen by BleakScanner with full metadata.
+
+    This is a diagnostic function that bypasses all name/model filtering.
+    It shows exactly what the host's Bluetooth stack (BlueZ) can see.
+    If this returns an empty list, the issue is at the hardware/adapter layer
+    (e.g. the host is using an ESPHome Bluetooth proxy which BlueZ cannot see).
+    """
+    from .device import get_ble_device_name
+    from .errors import DeviceNotFoundError
+    from .device import get_model_class_from_name
+
+    result: dict = {
+        "adapter": "BlueZ (direct)",
+        "total_devices": 0,
+        "devices": [],
+        "error": None,
+    }
+    try:
+        try:
+            discovered_with_adv = await BleakScanner.discover(timeout=timeout, return_adv=True)
+        except TypeError:
+            raw_list = await BleakScanner.discover(timeout=timeout)
+            discovered_with_adv = {d.address: (d, None) for d in raw_list}
+
+        if isinstance(discovered_with_adv, dict):
+            entries = discovered_with_adv.values()
+        else:
+            entries = {d.address: (d, None) for d in discovered_with_adv}.values()  # type: ignore[assignment]
+
+        all_devices = list(entries)
+        result["total_devices"] = len(all_devices)
+
+        for entry in all_devices:
+            if isinstance(entry, tuple):
+                ble_dev, adv_data = entry
+            else:
+                ble_dev, adv_data = entry, None  # type: ignore[assignment]
+
+            resolved_name = get_ble_device_name(ble_dev)
+            adv_local_name = getattr(adv_data, "local_name", None) if adv_data else None
+            best_name = resolved_name or adv_local_name
+
+            is_supported = False
+            model_code = None
+            if best_name:
+                try:
+                    mc = get_model_class_from_name(best_name)
+                    is_supported = True
+                    model_code = getattr(mc, "device_kind", str(mc))
+                except DeviceNotFoundError:
+                    pass
+
+            # Dump raw bleak metadata so we can see what fields are populated
+            raw_metadata: dict = {}
+            if hasattr(ble_dev, "metadata") and isinstance(ble_dev.metadata, dict):
+                raw_metadata = {k: str(v) for k, v in ble_dev.metadata.items()}
+            elif hasattr(ble_dev, "details"):
+                raw_metadata = {"details": str(ble_dev.details)[:400]}
+
+            device_entry: dict = {
+                "address": ble_dev.address,
+                "bleak_name": ble_dev.name,
+                "resolved_name": resolved_name,
+                "adv_local_name": adv_local_name,
+                "best_name": best_name,
+                "rssi": getattr(ble_dev, "rssi", None),
+                "is_supported_chihiros": is_supported,
+                "matched_model": model_code,
+                "raw_metadata": raw_metadata,
+            }
+            result["devices"].append(device_entry)
+
+    except Exception as exc:
+        result["error"] = str(exc)
+        logger.warning("Raw BLE scan failed: %s", exc)
+
+    return result
+
+
 class BLEService:
     """Manages BLE devices, status cache, and persistence."""
 
