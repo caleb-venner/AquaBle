@@ -19,6 +19,7 @@ from typing import Any, AsyncIterator, Dict, Iterable, Optional, Sequence, Tuple
 
 from bleak import BleakScanner
 from bleak.backends.device import BLEDevice
+from bleak.backends.scanner import AdvertisementData
 from bleak_retry_connector import BleakConnectionError, BleakNotFoundError
 from fastapi import HTTPException
 
@@ -32,6 +33,7 @@ from .utils import get_config_dir, get_env_bool, get_env_float, get_env_int
 
 # Re-implement lightweight internal API functions (previously in core_api)
 SupportedDeviceInfo = Tuple[BLEDevice, Type[BaseDevice]]
+DiscoveredEntry = BLEDevice | Tuple[BLEDevice, AdvertisementData | None]
 
 # Persistence and runtime configuration
 CONFIG_DIR = get_config_dir()
@@ -95,7 +97,7 @@ class CachedStatus:
 
 
 def filter_supported_devices(
-    devices: Iterable[BLEDevice],
+    devices: Iterable[DiscoveredEntry],
 ) -> list[SupportedDeviceInfo]:
     """Return BLE devices that map to a known Chihiros model.
 
@@ -105,14 +107,24 @@ def filter_supported_devices(
     device names; swallow that and continue so discovery is robust.
     """
     supported: list[SupportedDeviceInfo] = []
-    for device in devices:
+    for entry in devices:
+        advertisement_data: AdvertisementData | None = None
+        if isinstance(entry, tuple):
+            device, advertisement_data = entry
+        else:
+            device = entry
+
         name = get_ble_device_name(device)
+        if not name and advertisement_data is not None:
+            name = getattr(advertisement_data, "local_name", None)
         if not name:
+            logger.debug("Skipping BLE device without resolvable name: %s", device.address)
             continue
         try:
             model_class = get_model_class_from_name(name)
         except DeviceNotFoundError:
             # Unknown device name — skip it
+            logger.debug("Ignoring unsupported BLE device %s (%s)", device.address, name)
             continue
         # type: ignore[attr-defined]
         codes = getattr(model_class, "model_codes", [])
@@ -130,8 +142,22 @@ async def discover_supported_devices(
     Returns empty list if Bluetooth is unavailable or disabled.
     """
     try:
-        discovered = await BleakScanner.discover(timeout=timeout)
-        return filter_supported_devices(discovered)
+        try:
+            discovered_with_adv = await BleakScanner.discover(timeout=timeout, return_adv=True)
+        except TypeError:
+            discovered = await BleakScanner.discover(timeout=timeout)
+            logger.debug("BLE discovery returned %d entries (legacy mode)", len(discovered))
+            return filter_supported_devices(discovered)
+
+        if isinstance(discovered_with_adv, dict):
+            logger.debug(
+                "BLE discovery returned %d entries with advertisement data",
+                len(discovered_with_adv),
+            )
+            return filter_supported_devices(discovered_with_adv.values())
+
+        logger.debug("BLE discovery returned %d entries", len(discovered_with_adv))
+        return filter_supported_devices(discovered_with_adv)
     except Exception as e:
         # Bluetooth controller not found, disabled, or other hardware issues
         error_msg = str(e).lower()

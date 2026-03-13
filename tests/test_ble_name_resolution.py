@@ -7,6 +7,7 @@ from typing import cast
 
 import pytest
 from bleak.backends.device import BLEDevice
+from bleak.backends.scanner import AdvertisementData
 
 from aquable.ble_service import filter_supported_devices
 from aquable.device import get_ble_device_name, get_device_from_address, get_model_class_from_name
@@ -47,6 +48,22 @@ def test_filter_supported_devices_uses_local_name() -> None:
     assert len(result) == 1
     assert result[0][0].address == "E4:3A:D5:3A:D8:02"
     assert result[0][1].__name__ == "Doser"
+
+
+def test_filter_supported_devices_uses_advertisement_local_name() -> None:
+    """Discovery should support names available only in AdvertisementData."""
+    supported = _FakeBLEDevice(
+        address="E4:99:45:71:65:14",
+        name=None,
+        metadata={},
+    )
+    adv = cast(AdvertisementData, SimpleNamespace(local_name="DYWPR120E49945716514"))
+
+    result = filter_supported_devices([(cast(BLEDevice, supported), adv)])
+
+    assert len(result) == 1
+    assert result[0][0].address == "E4:99:45:71:65:14"
+    assert result[0][1].__name__ == "WRGBIIPro"
 
 
 def test_get_model_class_from_name_matches_full_broadcast_name() -> None:
