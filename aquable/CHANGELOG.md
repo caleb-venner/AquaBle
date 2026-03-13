@@ -3,6 +3,12 @@
 All notable changes to AquaBle will be documented in this file.
 
 
+## [1.2.3] - 2026-03-13
+
+### Changed
+
+- Updated version metadata to align add-on releases with the tagged version
+
 ## [2.1.2] - 2025-10-31
 
 ### Added (2.1.2)
