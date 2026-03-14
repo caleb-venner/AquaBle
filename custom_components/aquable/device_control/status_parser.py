@@ -9,62 +9,18 @@ Used by device classes to decode notifications from the BLE UART service.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import Optional, Tuple
+from .models import (
+    DoserStatus,
+    HeadSnapshot,
+    LightKeyframe,
+    LightStatus,
+    MODE_NAMES,
+)
 
 # ============================================================================
-# Doser Status Models
+# Doser Status Parsers
 # ============================================================================
-
-
-MODE_NAMES = {
-    0x00: "daily",
-    0x01: "24h",
-    0x02: "custom",
-    0x03: "timer",
-    0x04: "disabled",
-}
-
-
-@dataclass(slots=True)
-class HeadSnapshot:
-    """Decoded information for a single head in the status frame."""
-
-    mode: int
-    hour: int
-    minute: int
-    dosed_tenths_ml: int
-    extra: bytes
-
-    def mode_label(self) -> str:
-        """Return a human friendly mode name if known."""
-        return MODE_NAMES.get(self.mode, f"0x{self.mode:02X}")
-
-    def dosed_ml(self) -> float:
-        """Return the ml already dispensed today."""
-        return self.dosed_tenths_ml / 10
-
-
-@dataclass(slots=True)
-class DoserStatus:
-    """High level representation of a status notification."""
-
-    message_id: tuple[int, int] | None
-    response_mode: int | None
-    weekday: int | None
-    hour: int | None
-    minute: int | None
-    heads: list[HeadSnapshot]
-    tail_targets: list[int]
-    tail_flag: int | None
-    tail_raw: bytes
-    lifetime_totals_tenths_ml: list[int]
-    raw_payload: bytes = b""
-
-    def lifetime_totals_ml(self) -> list[float]:
-        """Return lifetime totals in mL for all heads."""
-        return [total / 10.0 for total in self.lifetime_totals_tenths_ml]
-
 
 def _parse_status_payload(payload: bytes) -> DoserStatus:
     """Parse response mode 0xFE: Head data with schedule info and daily dosed amounts.
@@ -204,37 +160,8 @@ def parse_doser_payload(payload: bytes) -> DoserStatus:
 
 
 # ============================================================================
-# Light Status Models
+# Light Status Parsers
 # ============================================================================
-
-
-@dataclass(slots=True)
-class LightKeyframe:
-    """Single scheduled point (hour, minute, intensity)."""
-
-    hour: int
-    minute: int
-    value: int
-
-    def as_time(self) -> str:
-        """Return the keyframe timestamp formatted as HH:MM."""
-        return f"{self.hour:02d}:{self.minute:02d}"
-
-
-@dataclass(slots=True)
-class LightStatus:
-    """Decoded view of a WRGB status notification."""
-
-    message_id: Optional[Tuple[int, int]]
-    response_mode: Optional[int]
-    weekday: Optional[int]
-    hour: Optional[int]
-    minute: Optional[int]
-    keyframes: list[LightKeyframe]
-    time_markers: list[Tuple[int, int]]
-    tail: bytes
-    raw_payload: bytes
-
 
 def _plausible_time(wd: int, hr: int, minute: int) -> bool:
     return 0 <= wd <= 7 and 0 <= hr <= 23 and 0 <= minute <= 59

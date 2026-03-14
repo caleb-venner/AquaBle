@@ -36,10 +36,16 @@ async def async_setup_entry(
     entities: list[SensorEntity] = []
     
     if coordinator.device_type == DEVICE_TYPE_DOSER:
+        # Device-level sensors
+        entities.append(DoserModeSensor(coordinator))
+        
         # Create sensors for each of 4 heads
         for head_idx in range(4):
             entities.extend([
+                DoserHeadModeSensor(coordinator, head_idx),
                 DoserDosedTodaySensor(coordinator, head_idx),
+                DoserHeadTargetDoseSensor(coordinator, head_idx),
+                DoserHeadScheduleTimeSensor(coordinator, head_idx),
                 DoserLifetimeTotalSensor(coordinator, head_idx),
             ])
     elif coordinator.device_type == DEVICE_TYPE_LIGHT:
@@ -49,6 +55,52 @@ async def async_setup_entry(
         ])
     
     async_add_entities(entities)
+
+
+class DoserModeSensor(AquaBleEntity, SensorEntity):
+    """Sensor showing current doser device mode."""
+
+    _attr_icon = "mdi:water-pump"
+
+    def __init__(self, coordinator: AquaBleCoordinator) -> None:
+        """Initialize the sensor."""
+        super().__init__(coordinator, "mode")
+        self._attr_name = "Mode"
+        self._attr_translation_key = "mode"
+
+    @property
+    def native_value(self) -> str | None:
+        """Return the current mode."""
+        if not isinstance(self.coordinator.data, DoserStatus):
+            return None
+        
+        # Chihiros dosers are generally always in 'auto' mode if connected
+        return "auto"
+
+
+class DoserHeadModeSensor(AquaBleEntity, SensorEntity):
+    """Sensor showing mode for a specific doser head."""
+
+    _attr_icon = "mdi:cog"
+
+    def __init__(self, coordinator: AquaBleCoordinator, head_idx: int) -> None:
+        """Initialize the sensor."""
+        super().__init__(coordinator, f"head_{head_idx}_mode")
+        self._head_idx = head_idx
+        self._attr_name = f"Head {head_idx + 1} mode"
+        self._attr_translation_key = "head_mode"
+
+    @property
+    def native_value(self) -> str | None:
+        """Return the head mode."""
+        if not isinstance(self.coordinator.data, DoserStatus):
+            return None
+        
+        status: DoserStatus = self.coordinator.data
+        if self._head_idx >= len(status.heads):
+            return None
+        
+        return status.heads[self._head_idx].mode_label()
 
 
 class DoserDosedTodaySensor(AquaBleEntity, SensorEntity):
@@ -77,6 +129,60 @@ class DoserDosedTodaySensor(AquaBleEntity, SensorEntity):
             return None
         
         return status.heads[self._head_idx].dosed_ml()
+
+
+class DoserHeadTargetDoseSensor(AquaBleEntity, SensorEntity):
+    """Sensor showing daily target dose for a doser head."""
+
+    _attr_native_unit_of_measurement = UnitOfVolume.MILLILITERS
+    _attr_device_class = SensorDeviceClass.VOLUME
+    _attr_icon = "mdi:water-check"
+
+    def __init__(self, coordinator: AquaBleCoordinator, head_idx: int) -> None:
+        """Initialize the sensor."""
+        super().__init__(coordinator, f"head_{head_idx}_target_dose")
+        self._head_idx = head_idx
+        self._attr_name = f"Head {head_idx + 1} target dose"
+        self._attr_translation_key = "target_dose"
+
+    @property
+    def native_value(self) -> float | None:
+        """Return the target dose in mL."""
+        if not isinstance(self.coordinator.data, DoserStatus):
+            return None
+        
+        status: DoserStatus = self.coordinator.data
+        if self._head_idx >= len(status.tail_targets):
+            return None
+        
+        # tail_targets values are in mL
+        return float(status.tail_targets[self._head_idx])
+
+
+class DoserHeadScheduleTimeSensor(AquaBleEntity, SensorEntity):
+    """Sensor showing scheduled dose time for a doser head."""
+
+    _attr_icon = "mdi:clock-outline"
+
+    def __init__(self, coordinator: AquaBleCoordinator, head_idx: int) -> None:
+        """Initialize the sensor."""
+        super().__init__(coordinator, f"head_{head_idx}_schedule_time")
+        self._head_idx = head_idx
+        self._attr_name = f"Head {head_idx + 1} schedule time"
+        self._attr_translation_key = "schedule_time"
+
+    @property
+    def native_value(self) -> str | None:
+        """Return the scheduled time."""
+        if not isinstance(self.coordinator.data, DoserStatus):
+            return None
+        
+        status: DoserStatus = self.coordinator.data
+        if self._head_idx >= len(status.heads):
+            return None
+        
+        head = status.heads[self._head_idx]
+        return f"{head.hour:02d}:{head.minute:02d}"
 
 
 class DoserLifetimeTotalSensor(AquaBleEntity, SensorEntity):

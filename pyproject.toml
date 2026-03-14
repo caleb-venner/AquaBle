@@ -20,6 +20,24 @@ dependencies = [
     "pydantic>=2.0.0",
 ]
 
+[dependency-groups]
+dev = [
+    "black",
+    "isort",
+    "flake8",
+]
+test = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-mock>=3.12.0",
+    "homeassistant>=2024.1.0",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+pythonpath = ["."]
+
 [project.urls]
 "Source Code" = "https://github.com/caleb-venner/AquaBle"
 "Bug Reports" = "https://github.com/caleb-venner/AquaBle/issues"

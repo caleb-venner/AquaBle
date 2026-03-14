@@ -19,5 +19,30 @@
     "abort": {
       "already_configured": "Device is already configured"
     }
+  },
+  "entity": {
+    "sensor": {
+      "dosed_today": {
+        "name": "Dosed today"
+      },
+      "lifetime_total": {
+        "name": "Lifetime total"
+      },
+      "mode": {
+        "name": "Mode"
+      },
+      "head_mode": {
+        "name": "Head mode"
+      },
+      "target_dose": {
+        "name": "Target dose"
+      },
+      "schedule_time": {
+        "name": "Schedule time"
+      },
+      "schedules": {
+        "name": "Schedules"
+      }
+    }
   }
 }

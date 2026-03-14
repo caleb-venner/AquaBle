@@ -5,7 +5,8 @@ from __future__ import annotations
 from typing import Any, ClassVar, Sequence
 
 from .. import encoder as commands
-from ..status_parser import LightStatus, parse_light_payload
+from ..models import LightStatus
+from ..status_parser import parse_light_payload
 from .base_device import BaseDevice
 
 

@@ -5,7 +5,8 @@ from __future__ import annotations
 from typing import Any, ClassVar, Sequence
 
 from .. import encoder as doser_commands
-from ..status_parser import DoserStatus, parse_doser_payload
+from ..models import DoserStatus
+from ..status_parser import parse_doser_payload
 from .base_device import BaseDevice
 
 
@@ -16,6 +17,39 @@ class Doser(BaseDevice):
     status_serializer: ClassVar[str | None] = "serialize_doser_status"
     _model_name = "Dosing Pump"
     _model_codes = ["DYDOSE"]
+
+    def __init__(self, *args, **kwargs) -> None:
+        """Initialize the doser."""
+        super().__init__(*args, **kwargs)
+        # Initialize with empty status to ensure update_from works
+        self.last_status = DoserStatus(
+            message_id=None,
+            response_mode=None,
+            weekday=None,
+            hour=None,
+            minute=None,
+            heads=[],
+            tail_targets=[],
+            tail_flag=None,
+            tail_raw=b"",
+            lifetime_totals_tenths_ml=[],
+        )
+
+    def _notification_handler(self, _sender: Any, data: bytearray) -> None:
+        """Handle an incoming UART notification from the pump with status merging."""
+        self._logger.debug("%s: Notification received: %s", self.name, data.hex())
+        try:
+            status = self._parse_status(data)
+            if status:
+                if isinstance(self.last_status, DoserStatus) and isinstance(
+                    status, DoserStatus
+                ):
+                    self.last_status.update_from(status)
+                else:
+                    self.last_status = status
+                self._status_event.set()
+        except Exception:
+            self._logger.exception("Failed to parse doser status notification")
 
     async def request_status(self) -> None:
         """Send a handshake to ask the pump for its latest status."""
