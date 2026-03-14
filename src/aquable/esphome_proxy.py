@@ -93,10 +93,21 @@ class ESPHomeProxyManager:
 
     async def start(self) -> None:
         """Connect to the ESPHome proxy API and begin advertisement streaming."""
-        logger.info("Connecting to ESPHome Bluetooth proxy at %s", self._host)
+        host = self._host
+        port = 6053
+        if ":" in host:
+            try:
+                host, port_str = host.rsplit(":", 1)
+                port = int(port_str)
+            except (ValueError, TypeError):
+                # Fall back to default if parsing fails
+                host = self._host
+                port = 6053
+
+        logger.info("Connecting to ESPHome Bluetooth proxy at %s:%d", host, port)
         api = APIClient(
-            address=self._host,
-            port=6053,
+            address=host,
+            port=port,
             password=self._password,
             noise_psk=self._noise_psk,
             client_info="AquaBle",
