@@ -6,7 +6,7 @@ Home Assistant integration for Chihiros aquarium devices (LED lights and dosing 
 
 ### HACS (Recommended)
 
-1. Add custom repository: `https://github.com/caleb-venner/AquaBle-dev`
+1. Add custom repository: `https://github.com/caleb-venner/AquaBle`
 2. Category: Integration
 3. Download and restart Home Assistant
 4. Add integration via UI: Settings → Devices & Services → Add Integration → AquaBle
