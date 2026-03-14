@@ -142,7 +142,10 @@ def filter_supported_devices(
         # type: ignore[attr-defined]
         codes = getattr(model_class, "model_codes", [])
         if not codes:
+            logger.debug("Skipping %s (%s): No model codes defined", device.address, name)
             continue
+        
+        logger.info("Found supported Chihiros device: %s (%s) matching model %s", device.address, name, model_class.__name__)
         supported.append((device, model_class))
     return supported
 
@@ -209,81 +212,96 @@ async def discover_supported_devices(
 
 
 async def raw_ble_scan(timeout: float = 5.0) -> dict:
-    """Return all BLE devices seen by BleakScanner with full metadata.
+    """Return all BLE devices seen by all sources with full metadata.
 
     This is a diagnostic function that bypasses all name/model filtering.
-    It shows exactly what the host's Bluetooth stack (BlueZ) can see.
-    If this returns an empty list, the issue is at the hardware/adapter layer
-    (e.g. the host is using an ESPHome Bluetooth proxy which BlueZ cannot see).
     """
     from .device import get_ble_device_name, get_model_class_from_name
     from .errors import DeviceNotFoundError
 
     result: dict = {
-        "adapter": "BlueZ (direct)",
+        "adapter": "BlueZ (direct) + ESPHome Proxy",
         "connection_mode": _connection_mode(),
         "total_devices": 0,
         "devices": [],
         "error": None,
     }
-    try:
+    
+    mode = result["connection_mode"]
+    by_address: dict[str, tuple[BLEDevice, AdvertisementData | None, str]] = {}
+
+    # 1. Collect from ESPHome Proxy
+    if mode in {"auto", "esphome"}:
+        proxy = get_proxy_manager()
+        if proxy and proxy.is_running:
+            logger.debug("Diagnostic scan: including ESPHome proxy cache")
+            for dev, adv in proxy.get_all_devices():
+                by_address[dev.address.upper()] = (dev, adv, "ESPHome Proxy")
+
+    # 2. Collect from local BlueZ
+    if mode in {"auto", "local"}:
         try:
-            discovered_with_adv = await BleakScanner.discover(timeout=timeout, return_adv=True)
-        except TypeError:
-            raw_list = await BleakScanner.discover(timeout=timeout)
-            discovered_with_adv = {d.address: (d, None) for d in raw_list}
+            logger.debug("Diagnostic scan: including local BlueZ scan (timeout=%.1f)", timeout)
+            try:
+                discovered_with_adv = await BleakScanner.discover(timeout=timeout, return_adv=True)
+            except TypeError:
+                raw_list = await BleakScanner.discover(timeout=timeout)
+                discovered_with_adv = {d.address: (d, None) for d in raw_list}
 
-        if isinstance(discovered_with_adv, dict):
-            entries = discovered_with_adv.values()
-        else:
-            entries = {d.address: (d, None) for d in discovered_with_adv}.values()
-
-        all_devices = list(entries)
-        result["total_devices"] = len(all_devices)
-
-        for entry in all_devices:
-            if isinstance(entry, tuple):
-                ble_dev, adv_data = entry
+            if isinstance(discovered_with_adv, dict):
+                entries = discovered_with_adv.values()
             else:
-                ble_dev, adv_data = entry, None  # type: ignore[assignment]
+                entries = {d.address: (d, None) for d in discovered_with_adv}.values()
 
-            resolved_name = get_ble_device_name(ble_dev)
-            adv_local_name = getattr(adv_data, "local_name", None) if adv_data else None
-            best_name = resolved_name or adv_local_name
+            for entry in entries:
+                if isinstance(entry, tuple):
+                    ble_dev, adv_data = entry
+                else:
+                    ble_dev, adv_data = entry, None
+                
+                # Local scan takes precedence/overwrites for the same address if found locally
+                by_address[ble_dev.address.upper()] = (ble_dev, adv_data, "BlueZ (direct)")
+        except Exception as e:
+            logger.warning("Local BLE scan failed: %s", e)
+            if not by_address:
+                result["error"] = f"Local scan failed and no proxy results: {e}"
 
-            is_supported = False
-            model_code = None
-            if best_name:
-                try:
-                    mc = get_model_class_from_name(best_name)
-                    is_supported = True
-                    model_code = getattr(mc, "device_kind", str(mc))
-                except DeviceNotFoundError:
-                    pass
+    result["total_devices"] = len(by_address)
 
-            # Dump raw bleak metadata so we can see what fields are populated
-            raw_metadata: dict = {}
-            if hasattr(ble_dev, "metadata") and isinstance(ble_dev.metadata, dict):
-                raw_metadata = {k: str(v) for k, v in ble_dev.metadata.items()}
-            elif hasattr(ble_dev, "details"):
-                raw_metadata = {"details": str(ble_dev.details)[:400]}
+    for address_key, (ble_dev, adv_data, source) in by_address.items():
+        resolved_name = get_ble_device_name(ble_dev)
+        adv_local_name = getattr(adv_data, "local_name", None) if adv_data else None
+        best_name = resolved_name or adv_local_name
 
-            device_entry: dict = {
-                "address": ble_dev.address,
-                "bleak_name": ble_dev.name,
-                "resolved_name": resolved_name,
-                "adv_local_name": adv_local_name,
-                "best_name": best_name,
-                "rssi": getattr(ble_dev, "rssi", None),
-                "is_supported_chihiros": is_supported,
-                "matched_model": model_code,
-                "raw_metadata": raw_metadata,
-            }
-            result["devices"].append(device_entry)
+        is_supported = False
+        model_code = None
+        if best_name:
+            try:
+                mc = get_model_class_from_name(best_name)
+                is_supported = True
+                model_code = getattr(mc, "device_kind", str(mc))
+            except DeviceNotFoundError:
+                pass
 
-    except Exception as exc:
-        result["error"] = str(exc)
-        logger.warning("Raw BLE scan failed: %s", exc)
+        # Dump raw bleak metadata
+        raw_metadata: dict = {"source": source}
+        if hasattr(ble_dev, "metadata") and isinstance(ble_dev.metadata, dict):
+            raw_metadata.update({k: str(v) for k, v in ble_dev.metadata.items()})
+        elif hasattr(ble_dev, "details"):
+            raw_metadata["details"] = str(ble_dev.details)[:400]
+
+        device_entry: dict = {
+            "address": ble_dev.address,
+            "bleak_name": ble_dev.name,
+            "resolved_name": resolved_name,
+            "adv_local_name": adv_local_name,
+            "best_name": best_name,
+            "rssi": getattr(ble_dev, "rssi", None),
+            "is_supported_chihiros": is_supported,
+            "matched_model": model_code,
+            "raw_metadata": raw_metadata,
+        }
+        result["devices"].append(device_entry)
 
     return result
 

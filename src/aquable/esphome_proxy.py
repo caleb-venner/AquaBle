@@ -189,6 +189,7 @@ class ESPHomeProxyManager:
         """Update the device cache from each incoming advertisement."""
         ble_device = _adv_to_ble_device(adv)
         adv_data = _adv_to_advertisement_data(adv)
+        logger.debug("Received advertisement from ESPHome: %s (%s) RSSI: %d", ble_device.address, adv.name or "No Name", adv.rssi)
         self._device_cache[ble_device.address.upper()] = (ble_device, adv_data)
 
     def get_ble_device(self, address: str) -> tuple[BLEDevice, AdvertisementData] | None:
