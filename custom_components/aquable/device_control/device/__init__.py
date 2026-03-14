@@ -34,10 +34,15 @@ def get_model_class_from_name(
     device_name: str,
 ) -> Type[BaseDevice]:
     """Get device class name from device name."""
-    model_class = CODE2MODEL.get(device_name[:-12])
-    if model_class is None:
-        raise RuntimeError(f"Device model code not found for {device_name}")
-    return model_class
+    name_upper = device_name.upper()
+    
+    # Sort keys by length descending to match longest possible code first
+    sorted_codes = sorted(CODE2MODEL.keys(), key=len, reverse=True)
+    for model_code in sorted_codes:
+        if model_code in name_upper:
+            return CODE2MODEL[model_code]
+            
+    raise RuntimeError(f"Device model code not found for {device_name}")
 
 
 async def get_device_from_address(device_address: str) -> BaseDevice:

@@ -16,7 +16,7 @@ class Doser(BaseDevice):
     device_kind: ClassVar[str] = "doser"
     status_serializer: ClassVar[str | None] = "serialize_doser_status"
     _model_name = "Dosing Pump"
-    _model_codes = ["DYDOSE"]
+    _model_codes = ["DYDOSE", "DYDOS"]
 
     def __init__(self, *args, **kwargs) -> None:
         """Initialize the doser."""
