@@ -17,41 +17,36 @@ _LOGGER = logging.getLogger(__name__)
 
 # Known device model codes for type detection
 DOSER_MODEL_CODES = [
-    "DYDOS",  # Dosing Pump model codes
+    "DYDOSE",  # Dosing Pump model codes
+    "DYDOS",
     "PUMP",
 ]
 
 LIGHT_MODEL_CODES = [
-    "DYWPRO30", "DYWPRO45", "DYWPRO60", "DYWPRO80", "DYWPRO90", "DYWPR120",  # WRGB II Pro
-    "DYU550", "DYU600", "DYU700", "DYU800", "DYU920", "DYU1000", "DYU1200", "DYU1500",  # Universal WRGB
-    "DYSILN", "DYSL30", "DYSL45", "DYSL60", "DYSL90", "DYSL12",  # WRGB II Slim
-    "DYNC2N",  # C II
+    "DYWPRO", "DYWPR",  # WRGB II Pro
+    "DYU",  # Universal WRGB
+    "DYSILN", "DYSL",  # WRGB II Slim
+    "DYNC2", "DYNC",  # C II
     "DYSSD", "DYZSD",  # Z Light Tiny
     "DYLED",  # Commander 4
     "DYCOM",  # Commander 1
-    "DYNA2", "DYNA2N",  # A II
+    "DYNA2",  # A II
+    "DYNWRGB", "DYNW", # WRGB II
 ]
 
 
 def _detect_device_type_from_name(device_name: str) -> str:
-    """Detect device type from Bluetooth device name.
-    
-    Chihiros devices encode model code in last 12 chars of name.
-    Format: <model_name>-<6_char_model_code>-<6_char_serial>
-    Example: "WRGB II Pro-DYWPRO60-ABC123"
-    """
+    """Detect device type from Bluetooth device name."""
     if not device_name:
         return DEVICE_TYPE_LIGHT  # Default to light
     
-    # Extract model code from name (last 12 chars contain model code)
-    if len(device_name) >= 12:
-        model_code = device_name[-12:-7].strip("-")  # Extract 6-char model code
-        
-        # Check against known model codes
-        if any(code in model_code for code in DOSER_MODEL_CODES):
-            return DEVICE_TYPE_DOSER
-        if any(code in model_code for code in LIGHT_MODEL_CODES):
-            return DEVICE_TYPE_LIGHT
+    name_upper = device_name.upper()
+    
+    # Check against known model codes (anywhere in name)
+    if any(code in name_upper for code in DOSER_MODEL_CODES):
+        return DEVICE_TYPE_DOSER
+    if any(code in name_upper for code in LIGHT_MODEL_CODES):
+        return DEVICE_TYPE_LIGHT
     
     # Fallback to keyword detection in full name
     name_lower = device_name.lower()
