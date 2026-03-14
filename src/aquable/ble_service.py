@@ -157,9 +157,13 @@ async def discover_supported_devices(
     mode = _connection_mode()
     by_address: dict[str, SupportedDeviceInfo] = {}
 
+    # If we are using ESPHome, we need to wait for the timeout to allow
+    # the background advertisement stream to populate the proxy cache.
     if mode in {"auto", "esphome"}:
         proxy = get_proxy_manager()
         if proxy is not None and proxy.is_running:
+            logger.debug("Waiting %.1fs for ESPHome proxy cache to populate...", timeout)
+            await asyncio.sleep(timeout)
             proxy_entries = proxy.get_all_devices()
             logger.debug("ESPHome proxy discovery returned %d entries", len(proxy_entries))
             for dev, model in filter_supported_devices(proxy_entries):
@@ -167,6 +171,7 @@ async def discover_supported_devices(
         elif mode == "esphome":
             logger.warning("ESPHome mode enabled but proxy manager is not running")
 
+    # If we are also using local BlueZ, BleakScanner.discover will provide its own timeout.
     if mode in {"auto", "local"}:
         try:
             try:
