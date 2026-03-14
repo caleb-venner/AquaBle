@@ -135,9 +135,11 @@ async def _async_register_services(hass: HomeAssistant) -> None:
         
         device: LightDevice = coordinator.device
         
-        # Build brightness tuple from provided channels
+        # Build brightness tuple from provided channels in the correct ID order
         brightness_values = []
-        for color_name in sorted(device._colors.keys()):
+        for _, channel_id in sorted(device._colors.items(), key=lambda x: x[1]):
+            # Get color name for this channel ID
+            color_name = next(name for name, cid in device._colors.items() if cid == channel_id)
             value = call.data.get(color_name, 0)
             brightness_values.append(int(value))
         
@@ -150,6 +152,7 @@ async def _async_register_services(hass: HomeAssistant) -> None:
     
     async def handle_light_set_auto_schedule(call):
         """Handle light_set_auto_schedule service call."""
+        import datetime
         device_id = call.data["device_id"]
         name = call.data.get("name", "Unnamed Schedule")
         sunrise_hour = call.data["sunrise_hour"]
@@ -176,12 +179,18 @@ async def _async_register_services(hass: HomeAssistant) -> None:
             _LOGGER.warning("Maximum of 24 schedules reached, cannot add more")
             return
         
-        # TODO: Send BLE command to device with schedule
-        # await device.add_auto_schedule(
-        #     sunrise_hour, sunrise_minute,
-        #     sunset_hour, sunset_minute,
-        #     channels
-        # )
+        # Map color names to channel IDs for the device
+        brightness_dict = {}
+        for color_name, channel_id in device._colors.items():
+            if color_name in channels:
+                brightness_dict[channel_id] = channels[color_name]
+        
+        # Send BLE command to device with schedule
+        await device.add_auto_setting(
+            datetime.time(sunrise_hour, sunrise_minute),
+            datetime.time(sunset_hour, sunset_minute),
+            brightness=brightness_dict
+        )
         
         # Track the schedule
         schedule = {
@@ -241,6 +250,9 @@ async def _async_register_services(hass: HomeAssistant) -> None:
         if not coordinator or coordinator.device_type != DEVICE_TYPE_LIGHT:
             _LOGGER.error("Invalid light device: %s", device_id)
             return
+        
+        # Send BLE command to clear settings on device
+        await coordinator.device.reset_settings()
         
         # Clear tracked schedules
         coordinator.active_schedules = []
