@@ -9,8 +9,8 @@
   "dependencies": [
     "bluetooth"
   ],
-  "documentation": "https://github.com/caleb-venner/AquaBle-dev",
-  "issue_tracker": "https://github.com/caleb-venner/AquaBle-dev/issues",
+  "documentation": "https://github.com/caleb-venner/AquaBle",
+  "issue_tracker": "https://github.com/caleb-venner/AquaBle/issues",
   "iot_class": "local_polling",
   "requirements": [
     "bleak>=0.21.0",

@@ -21,8 +21,8 @@ dependencies = [
 ]
 
 [project.urls]
-"Source Code" = "https://github.com/caleb-venner/AquaBle-dev"
-"Bug Reports" = "https://github.com/caleb-venner/AquaBle-dev/issues"
+"Source Code" = "https://github.com/caleb-venner/AquaBle"
+"Bug Reports" = "https://github.com/caleb-venner/AquaBle/issues"
 "Home Assistant" = "https://www.home-assistant.io/"
 "Original Project" = "https://github.com/TheMicDiet/chihiros-led-control"
 
