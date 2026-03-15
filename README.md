@@ -9,7 +9,7 @@ Control your Chihiros equipment directly from Home Assistant with automatic disc
 - **Bluetooth Discovery**: Automatically discovers Chihiros devices in range.
 - **Doser Control**: Monitor dosing volumes, set schedules, and track lifetime usage.
 - **Light Control**: Adjust brightness per color channel, switch between manual/auto modes.
-- **Native Integration**: Built as a Home Assistant custom component with full UI support.
+- **Native Integration**: Built as a Home Assistant custom component.
 
 ## Supported Devices
 
