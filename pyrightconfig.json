@@ -1,0 +1,21 @@
+{
+  "include": [
+    "custom_components",
+    "tests",
+    "*.py"
+  ],
+  "exclude": [
+    "**/__pycache__"
+  ],
+  "venvPath": ".",
+  "venv": ".venv",
+  "executionEnvironments": [
+    {
+      "root": ".",
+      "pythonVersion": "3.11",
+      "extraPaths": [
+        "."
+      ]
+    }
+  ]
+}
