@@ -14,6 +14,7 @@ class WRGBII(LightDevice):
         "DYNW60",
         "DYNW90",
         "DYNW12P",
+        "DYNT90",
     ]
     _colors: dict[str, int] = {
         "red": 0,
