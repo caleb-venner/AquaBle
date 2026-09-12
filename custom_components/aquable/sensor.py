@@ -8,13 +8,14 @@ from typing import Any
 
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, SensorStateClass
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import UnitOfVolume
+from homeassistant.const import UnitOfPower, UnitOfVolume
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DEVICE_TYPE_DOSER, DEVICE_TYPE_LIGHT, DOMAIN
+from .const import CONF_POWER_PROFILE, DEVICE_TYPE_DOSER, DEVICE_TYPE_LIGHT, DOMAIN
 from .coordinator import AquaBleCoordinator
 from .domain.doser.status import DoserStatus
+from .domain.light.power_profile import PowerProfile
 from .domain.light.status import LightSchedule, LightStatus
 from .entity import AquaBleEntity
 
@@ -48,6 +49,16 @@ async def async_setup_entry(
         entities.append(LightHardwareSyncSensor(coordinator))
         for ch_idx in range(coordinator.num_channels):
             entities.append(LightLiveChannelSensor(coordinator, ch_idx))
+
+        # Optional power sensor — only registered when a power profile is available.
+        power_profile: PowerProfile | None = None
+        if entry.options and CONF_POWER_PROFILE in entry.options:
+            try:
+                power_profile = PowerProfile.from_dict(entry.options[CONF_POWER_PROFILE])
+            except (KeyError, TypeError, ValueError) as exc:
+                _LOGGER.warning("Failed to load power profile from options: %s", exc)
+        if power_profile is not None:
+            entities.append(LightPowerSensor(coordinator, power_profile))
 
     async_add_entities(entities)
 
@@ -298,7 +309,13 @@ def _calculate_channel_brightness(
     ch_idx: int,
     now: datetime.datetime,
 ) -> int:
-    """Interpolate real-time brightness (0-100%) for a given channel based on active schedules."""
+    """Interpolate real-time brightness for a given channel based on active schedules.
+
+    Return value ranges:
+      0–100   Standard brightness (all devices).
+      0–140   Overdrive range on supported models (not all channels simultaneously).
+      255     Sentinel — channel slot unused / to be reset; excluded from power calculations.
+    """
     max_brightness = 0
     now_minutes = now.hour * 60 + now.minute + now.second / 60.0
     # Python weekday(): Monday is 0, Sunday is 6.
@@ -339,7 +356,7 @@ def _calculate_channel_brightness(
         if brightness > max_brightness:
             max_brightness = brightness
 
-    return min(100, max(0, max_brightness))
+    return min(255, max(0, max_brightness))
 
 
 class LightLiveChannelSensor(AquaBleEntity, SensorEntity):  # pyright: ignore[reportIncompatibleVariableOverride]
@@ -376,3 +393,49 @@ class LightLiveChannelSensor(AquaBleEntity, SensorEntity):  # pyright: ignore[re
     def _handle_coordinator_update(self) -> None:
         self._update_state()
         super()._handle_coordinator_update()
+
+
+class LightPowerSensor(AquaBleEntity, SensorEntity):  # pyright: ignore[reportIncompatibleVariableOverride]
+    """Estimated current power draw (W) based on live channel brightness levels.
+
+    Uses the device's PowerProfile (built from the Chihiros cloud API payload)
+    to interpolate V×I per channel at the current setpoints, sum across channels,
+    add the fixed quiescent overhead, then apply the display scaling factor that
+    matches the Chihiros app's wattage display.
+
+    The sensor updates in lock-step with the live channel brightness sensors —
+    i.e. every coordinator poll cycle. Setpoints are derived from the schedule
+    interpolation result (0–100 range); the power formula supports the full
+    hardware range (0–140) for future use.
+    """
+
+    _attr_device_class = SensorDeviceClass.POWER
+    _attr_native_unit_of_measurement = UnitOfPower.WATT
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_icon = "mdi:lightning-bolt"
+    _attr_suggested_display_precision = 1
+
+    def __init__(self, coordinator: AquaBleCoordinator, power_profile: PowerProfile) -> None:
+        super().__init__(coordinator)
+        self._power_profile = power_profile
+        self._attr_unique_id = f"{coordinator.address}_estimated_power"
+        self._attr_name = "Estimated Power"
+        self._update_state()
+
+    def _update_state(self) -> None:
+        data = self.coordinator.data
+        if not isinstance(data, LightStatus):
+            self._attr_native_value = None
+            return
+
+        now = datetime.datetime.now()
+        setpoints: list[float] = [
+            float(_calculate_channel_brightness(data.schedules, ch_idx, now))
+            for ch_idx in range(self._power_profile.num_channels)
+        ]
+        self._attr_native_value = self._power_profile.estimated_watts(setpoints)
+
+    def _handle_coordinator_update(self) -> None:
+        self._update_state()
+        super()._handle_coordinator_update()
+

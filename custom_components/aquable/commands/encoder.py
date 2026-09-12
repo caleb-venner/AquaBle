@@ -216,15 +216,15 @@ def create_add_auto_setting_command(
 
     Supports variable numbers of brightness channels (RGB, RGBW, etc.).
     The brightness tuple length determines how many channels are configured.
-    Values must be 0-100 (percentage) or 255 (unused / sentinel / deletion).
+    Values must be 0-140 (percentage/overdrive) or 255 (unused / sentinel / deletion).
     """
     # Validate brightness values
     if not brightness or len(brightness) > 8:
         raise ValueError(f"Brightness must contain 1-8 values, got {len(brightness)}")
 
     for i, val in enumerate(brightness):
-        if not (0 <= val <= 100 or val == 255):
-            raise ValueError(f"Brightness value {i} must be 0-100 or 255, got {val}")
+        if not (0 <= val <= 140 or val == 255):
+            raise ValueError(f"Brightness value {i} must be 0-140 or 255, got {val}")
 
     parameters = [
         sunrise.hour,

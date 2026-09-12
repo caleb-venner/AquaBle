@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 import re
 from typing import Any
@@ -11,7 +12,7 @@ from homeassistant.components.bluetooth import (
     BluetoothServiceInfoBleak,
     async_discovered_service_info,
 )
-from homeassistant.config_entries import ConfigFlow
+from homeassistant.config_entries import ConfigFlow, OptionsFlow
 
 try:
     from homeassistant.config_entries import ConfigFlowResult
@@ -19,7 +20,8 @@ except ImportError:
     from homeassistant.data_entry_flow import FlowResult as ConfigFlowResult
 from homeassistant.const import CONF_ADDRESS, CONF_NAME
 
-from .const import CONF_DEVICE_TYPE, DEVICE_REGISTRY, DOMAIN, DeviceModelInfo
+from .const import CONF_DEVICE_TYPE, CONF_POWER_PROFILE, DEVICE_REGISTRY, DOMAIN, DeviceModelInfo
+from .domain.light.power_profile import PowerProfile
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -45,6 +47,11 @@ class AquaBleConfigFlow(ConfigFlow, domain=DOMAIN):
     """Handle a config flow for AquaBle."""
 
     VERSION = 1
+
+    @staticmethod
+    def async_get_options_flow(config_entry: Any) -> AquaBleOptionsFlowHandler:
+        """Return the options flow handler."""
+        return AquaBleOptionsFlowHandler(config_entry)
 
     def __init__(self) -> None:
         """Initialize the config flow."""
@@ -147,3 +154,100 @@ class AquaBleConfigFlow(ConfigFlow, domain=DOMAIN):
                 }
             ),
         )
+
+
+_CONF_PAYLOAD_JSON = "payload_json"
+
+
+class AquaBleOptionsFlowHandler(OptionsFlow):
+    """Options flow for AquaBle — allows uploading a Chihiros cloud payload
+    to enable per-device power estimation.
+
+    To obtain the payload JSON:
+    1. Log in to the My Chihiros app.
+    2. Use a proxy (e.g. mitmproxy) or the Chihiros cloud API to export your
+       device list payload.
+    3. Paste the full JSON here. AquaBle will extract the entry matching this
+       device and store only the relevant power calibration fields.
+    """
+
+    def __init__(self, config_entry: Any) -> None:
+        """Initialise."""
+        self._config_entry = config_entry
+
+    async def async_step_init(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Show the options form."""
+        errors: dict[str, str] = {}
+
+        if user_input is not None:
+            raw = user_input.get(_CONF_PAYLOAD_JSON, "").strip()
+
+            if not raw:
+                # User submitted empty — clear the stored profile.
+                new_options = {**self._config_entry.options}
+                new_options.pop(CONF_POWER_PROFILE, None)
+                return self.async_create_entry(title="", data=new_options)
+
+            try:
+                parsed = json.loads(raw)
+            except json.JSONDecodeError:
+                errors[_CONF_PAYLOAD_JSON] = "invalid_json"
+                parsed = None
+
+            if parsed is not None:
+                # Support both the raw API envelope {"data": [...]} and a bare list.
+                device_list: list = (
+                    parsed.get("data", []) if isinstance(parsed, dict) else parsed
+                )
+
+                # Match by device_id prefix against the config entry address,
+                # or accept the first light device entry if only one is present.
+                address: str = self._config_entry.data.get(CONF_ADDRESS, "")
+                profile: PowerProfile | None = None
+
+                for device_entry in device_list:
+                    if not isinstance(device_entry, dict):
+                        continue
+                    candidate = PowerProfile.from_payload(device_entry)
+                    if candidate is not None:
+                        profile = candidate
+                        # Prefer an entry whose device_id contains our address.
+                        dev_id: str = device_entry.get("device_id", "")
+                        if address and address.replace(":", "").upper() in dev_id.upper():
+                            break  # definitive match
+                        # Otherwise keep iterating in case a better match exists.
+
+                if profile is None:
+                    errors[_CONF_PAYLOAD_JSON] = "no_power_data"
+                else:
+                    new_options = {
+                        **self._config_entry.options,
+                        CONF_POWER_PROFILE: profile.to_dict(),
+                    }
+                    return self.async_create_entry(title="", data=new_options)
+
+        # Pre-fill with existing profile JSON if one is already stored.
+        existing_json = ""
+        if self._config_entry.options.get(CONF_POWER_PROFILE):
+            try:
+                existing_json = json.dumps(
+                    self._config_entry.options[CONF_POWER_PROFILE], indent=2
+                )
+            except (TypeError, ValueError):
+                pass
+
+        return self.async_show_form(
+            step_id="init",
+            data_schema=vol.Schema(
+                {
+                    vol.Optional(_CONF_PAYLOAD_JSON, default=existing_json): str,
+                }
+            ),
+            errors=errors,
+            description_placeholders={
+                "device_address": self._config_entry.data.get(CONF_ADDRESS, ""),
+            },
+        )
+

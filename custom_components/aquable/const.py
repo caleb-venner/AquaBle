@@ -6,6 +6,9 @@ DOMAIN = "aquable"
 
 # Configuration
 CONF_DEVICE_TYPE = "device_type"
+# Stores the serialised PowerProfile dict in ConfigEntry options.
+# Populated when the user uploads a Chihiros cloud payload JSON during setup or options flow.
+CONF_POWER_PROFILE = "power_profile"
 
 # Device types
 DEVICE_TYPE_DOSER = "doser"
