@@ -186,17 +186,8 @@ async def capture_device_payloads(
         commands_to_send: list[tuple[str, bytearray]] = [
             ("Handshake (0x5A, 0x04, [0x01])", _create_handshake_command((0, 1))),
             ("Time Sync (0x5A, 0x09)", _create_set_time_command((0, 2))),
+            ("Prepare 0x04 (0xA5 0x04)",_create_prepare_command((0, 3), stage=0x04),),
         ]
-
-        if not is_light:
-            commands_to_send.extend(
-                [
-                    (
-                        "Prepare 0x04 (0xA5 0x04)",
-                        _create_prepare_command((0, 3), stage=0x04),
-                    ),
-                ]
-            )
 
         for cmd_name, cmd_bytes in commands_to_send:
             _LOGGER.info("[%s] Sending %s: %s", name, cmd_name, cmd_bytes.hex())
