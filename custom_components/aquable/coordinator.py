@@ -213,8 +213,9 @@ class AquaBleCoordinator(DataUpdateCoordinator[DoserStatus | LightStatus]):
                 # Hardware 0xFE telemetry confirms device clock and connection.
                 if stored_schedules:
                     status.schedules = stored_schedules
-            elif stored_schedules:
-                # Fallback to keep stored schedule state if BLE notification was dropped
+            elif received_packets:
+                # Fallback to keep stored schedule state (or empty state) if 0xFE is missing
+                # e.g. WRGB II Pro v21 only sends 0x0A on handshake, never 0xFE
                 status = LightStatus(
                     message_id=None,
                     response_mode=None,
