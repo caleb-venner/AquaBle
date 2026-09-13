@@ -74,7 +74,11 @@ AquaBle automatically registers both custom cards as Lovelace resources when the
 2. Click **+ Add Card** and search for:
    - **AquaBle Light Schedule Card** (for LED lights)
    - **AquaBle Dosing Pump Card** (for dosing pumps)
-3. Select your device from the dropdown and click **Save**.
+3. For multiple devices of the same type you can force the card to reference a specific device by entering the 'Active Schedule' entity ID into the card yaml.
+   ```
+   type: custom:aquable-light-card
+   entity: sensor.wrgb_ii_pro_left_active_schedules
+   ```
 
 ### Adding Cards via YAML
 
