@@ -209,6 +209,43 @@ def _extract_channel_levels(
     return [red, green, blue, white]
 
 
+
+async def _execute_on_master_and_slaves(
+    hass: HomeAssistant,
+    master_coord: AquaBleCoordinator,
+    commands: list[bytearray],
+) -> None:
+    """Execute commands on the master and mirror them to any configured slave devices."""
+    await _async_execute_commands(hass, master_coord.address, commands)
+    await master_coord.async_request_refresh()
+
+    if not master_coord.entry:
+        return
+
+    slave_device_ids = master_coord.entry.options.get("sync_devices", [])
+    if not slave_device_ids:
+        return
+
+    master_schedules = master_coord.entry.options.get("schedules")
+
+    for slave_id in slave_device_ids:
+        try:
+            slave_coord = _get_coordinator(hass, slave_id)
+            if not slave_coord or not slave_coord.entry:
+                _LOGGER.warning("Could not find slave coordinator for device_id: %s", slave_id)
+                continue
+
+            # Sync schedules in HA frontend if they exist
+            if master_schedules is not None:
+                new_options = dict(slave_coord.entry.options)
+                new_options["schedules"] = master_schedules
+                hass.config_entries.async_update_entry(slave_coord.entry, options=new_options)
+
+            await _async_execute_commands(hass, slave_coord.address, commands)
+            await slave_coord.async_request_refresh()
+        except Exception as e:
+            _LOGGER.warning("Failed to sync commands to slave light %s: %s", slave_id, e)
+
 async def async_setup_services(hass: HomeAssistant) -> None:
     """Register custom services for AquaBle."""
 
@@ -228,8 +265,8 @@ async def async_setup_services(hass: HomeAssistant) -> None:
             minute=call.data["minute"],
             weekdays=call.data.get("weekdays"),
         )
-        await _async_execute_commands(hass, coord.address, commands)
-        await coord.async_request_refresh()
+        await _execute_on_master_and_slaves(hass, coord, commands)
+
 
     async def handle_doser_manual_dose(call: ServiceCall) -> None:
         coord = _get_coordinator(hass, call.data["device_id"])
@@ -240,8 +277,8 @@ async def async_setup_services(hass: HomeAssistant) -> None:
             head_index=call.data["head_index"],
             volume_tenths_ml=volume_tenths_ml,
         )
-        await _async_execute_commands(hass, coord.address, commands)
-        await coord.async_request_refresh()
+        await _execute_on_master_and_slaves(hass, coord, commands)
+
 
     async def handle_light_manual_mode(call: ServiceCall) -> None:
         coord = _get_coordinator(hass, call.data["device_id"])
@@ -250,8 +287,8 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         )
         colors = {ch_idx: val for ch_idx, val in enumerate(channel_levels)}
         _, commands = generators.generate_light_set_brightness_sequence((0, 0), colors)
-        await _async_execute_commands(hass, coord.address, commands)
-        await coord.async_request_refresh()
+        await _execute_on_master_and_slaves(hass, coord, commands)
+
 
     async def handle_light_auto_schedule(call: ServiceCall) -> None:
         coord = _get_coordinator(hass, call.data["device_id"])
@@ -349,8 +386,8 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         )
         commands_to_send.extend(add_cmds)
 
-        await _async_execute_commands(hass, coord.address, commands_to_send)
-        await coord.async_request_refresh()
+        await _execute_on_master_and_slaves(hass, coord, commands_to_send)
+
 
     async def handle_light_delete_auto_schedule(call: ServiceCall) -> None:
         coord = _get_coordinator(hass, call.data["device_id"])
@@ -395,9 +432,9 @@ async def async_setup_services(hass: HomeAssistant) -> None:
             _, commands = generators.generate_light_delete_auto_setting_sequence(
                 (0, 0), sunrise, sunset, ramp_up_minutes, weekdays=weekdays
             )
-            await _async_execute_commands(hass, coord.address, commands)
+            await _execute_on_master_and_slaves(hass, coord, commands)
 
-        await coord.async_request_refresh()
+
 
     async def handle_light_set_mode(call: ServiceCall) -> None:
         coord = _get_coordinator(hass, call.data["device_id"])
@@ -413,8 +450,8 @@ async def async_setup_services(hass: HomeAssistant) -> None:
             # so we just let light_set_manual_mode handle actual manual setting.
             return
 
-        await _async_execute_commands(hass, coord.address, commands)
-        await coord.async_request_refresh()
+        await _execute_on_master_and_slaves(hass, coord, commands)
+
 
     async def handle_light_clear_schedules(call: ServiceCall) -> None:
         coord = _get_coordinator(hass, call.data["device_id"])
@@ -425,8 +462,8 @@ async def async_setup_services(hass: HomeAssistant) -> None:
             hass.config_entries.async_update_entry(coord.entry, options=new_options)
 
         _, commands = generators.generate_light_clear_schedules_sequence((0, 0))
-        await _async_execute_commands(hass, coord.address, commands)
-        await coord.async_request_refresh()
+        await _execute_on_master_and_slaves(hass, coord, commands)
+
 
     # Register all services
     hass.services.async_register(

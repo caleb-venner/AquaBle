@@ -11,7 +11,15 @@ from homeassistant.components.bluetooth import (
     BluetoothServiceInfoBleak,
     async_discovered_service_info,
 )
-from homeassistant.config_entries import ConfigFlow
+from homeassistant.config_entries import ConfigFlow, OptionsFlow
+from homeassistant.core import callback
+from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers.selector import (
+    SelectOptionDict,
+    SelectSelector,
+    SelectSelectorConfig,
+    SelectSelectorMode,
+)
 
 try:
     from homeassistant.config_entries import ConfigFlowResult
@@ -144,6 +152,69 @@ class AquaBleConfigFlow(ConfigFlow, domain=DOMAIN):
             data_schema=vol.Schema(
                 {
                     vol.Required(CONF_ADDRESS): vol.In(device_options),
+                }
+            ),
+        )
+
+    @staticmethod
+    @callback
+    def async_get_options_flow(config_entry):
+        """Get the options flow for this handler."""
+        return AquaBleOptionsFlowHandler(config_entry)
+
+
+class AquaBleOptionsFlowHandler(OptionsFlow):
+    """Handle AquaBle options."""
+
+    def __init__(self, config_entry) -> None:
+        """Initialize options flow."""
+        self._config_entry = config_entry
+
+    async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        """Manage the options."""
+        if user_input is not None:
+            new_options = dict(self._config_entry.options)
+            new_options["sync_devices"] = user_input.get("sync_devices", [])
+            return self.async_create_entry(title="", data=new_options)
+
+        current_name = self._config_entry.data.get(CONF_NAME, "")
+        match = match_device_model(current_name)
+        current_prefix = match[0] if match else None
+
+        options: list[SelectOptionDict] = []
+        device_registry = dr.async_get(self.hass)
+
+        for entry in self.hass.config_entries.async_entries(DOMAIN):
+            if entry.entry_id == self._config_entry.entry_id:
+                continue
+
+            entry_name = entry.data.get(CONF_NAME, "")
+            entry_match = match_device_model(entry_name)
+
+            if entry_match and current_prefix and entry_match[0] == current_prefix:
+                dev_entries = dr.async_entries_for_config_entry(device_registry, entry.entry_id)
+                for dev in dev_entries:
+                    options.append(
+                        SelectOptionDict(
+                            value=dev.id,
+                            label=f"{entry_name} ({dev.name or dev.id})",
+                        )
+                    )
+
+        return self.async_show_form(
+            step_id="init",
+            data_schema=vol.Schema(
+                {
+                    vol.Optional(
+                        "sync_devices",
+                        default=self._config_entry.options.get("sync_devices", []),
+                    ): SelectSelector(
+                        SelectSelectorConfig(
+                            options=options,
+                            multiple=True,
+                            mode=SelectSelectorMode.DROPDOWN,
+                        )
+                    )
                 }
             ),
         )
