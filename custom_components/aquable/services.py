@@ -381,6 +381,9 @@ async def async_setup_services(hass: HomeAssistant) -> None:
 
         # 2. Push BLE add/update commands to light hardware
         start_id = (0, len(commands_to_send))
+        start_id, auto_cmds = generators.generate_light_enable_auto_mode_sequence(start_id)
+        commands_to_send.extend(auto_cmds)
+
         _, add_cmds = generators.generate_light_add_auto_setting_sequence(
             start_id, sunrise, sunset, brightness, ramp_up_minutes, weekdays=weekdays
         )
