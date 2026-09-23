@@ -241,7 +241,17 @@ async def _execute_on_master_and_slaves(
                 new_options["schedules"] = master_schedules
                 hass.config_entries.async_update_entry(slave_coord.entry, options=new_options)
 
-            await _async_execute_commands(hass, slave_coord.address, commands)
+            slave_commands = []
+            for cmd in commands:
+                # 0x5A (90) is cmd_id, 0x09 is mode for set_time_command
+                if cmd and cmd[0] == 90 and len(cmd) >= 6 and cmd[5] == 9:
+                    # Regenerate with a fresh timestamp but keep original msg_id
+                    fresh_cmd = encoder.create_set_time_command((cmd[3], cmd[4]))
+                    slave_commands.append(fresh_cmd)
+                else:
+                    slave_commands.append(cmd)
+
+            await _async_execute_commands(hass, slave_coord.address, slave_commands)
             await slave_coord.async_request_refresh()
         except Exception as e:
             _LOGGER.warning("Failed to sync commands to slave light %s: %s", slave_id, e)
