@@ -70,8 +70,8 @@ LIGHT_AUTO_SCHEMA = vol.Schema(
         vol.Required("sunrise_minute"): vol.All(vol.Coerce(int), vol.Range(min=0, max=59)),
         vol.Required("sunset_hour"): vol.All(vol.Coerce(int), vol.Range(min=0, max=23)),
         vol.Required("sunset_minute"): vol.All(vol.Coerce(int), vol.Range(min=0, max=59)),
-        vol.Optional("ramp_up_minutes", default=0): vol.All(
-            vol.Coerce(int), vol.Range(min=0, max=180)
+        vol.Optional("ramp_up_minutes", default=1): vol.All(
+            vol.Coerce(int), vol.Range(min=1, max=180)
         ),
         vol.Optional("white", default=0): vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
         vol.Optional("red", default=0): vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
@@ -89,8 +89,8 @@ LIGHT_DELETE_AUTO_SCHEMA = vol.Schema(
         vol.Optional("sunrise_minute"): vol.All(vol.Coerce(int), vol.Range(min=0, max=59)),
         vol.Optional("sunset_hour"): vol.All(vol.Coerce(int), vol.Range(min=0, max=23)),
         vol.Optional("sunset_minute"): vol.All(vol.Coerce(int), vol.Range(min=0, max=59)),
-        vol.Optional("ramp_up_minutes", default=0): vol.All(
-            vol.Coerce(int), vol.Range(min=0, max=180)
+        vol.Optional("ramp_up_minutes", default=1): vol.All(
+            vol.Coerce(int), vol.Range(min=1, max=180)
         ),
         vol.Optional("weekdays"): cv.ensure_list,
     }
