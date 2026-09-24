@@ -485,6 +485,62 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         _, commands = generators.generate_light_clear_schedules_sequence((0, 0))
         await _execute_on_master_and_slaves(hass, coord, commands)
 
+    async def handle_clock_desync_event(event) -> None:
+        """Handle clock desync by re-uploading time and all schedules."""
+        address = event.data.get("address")
+        if not address:
+            return
+
+        try:
+            coord = _get_coordinator(hass, address)
+        except HomeAssistantError:
+            return
+
+        if not coord.entry:
+            return
+
+        _LOGGER.info("Auto-healing desynced clock on %s (%s)", address, coord.device_type)
+
+        commands_to_send: list[bytearray] = []
+        start_id = (0, 0)
+
+        if coord.device_type == "doser":
+            # Dosers retain schedules in NVRAM, so we just need to sync the time.
+            start_id = encoder.next_message_id(start_id)
+            commands_to_send.append(encoder.create_set_time_command(start_id))
+            start_id = encoder.next_message_id(start_id)
+            commands_to_send.append(encoder.create_set_time_command(start_id))
+        else:
+            # For lights, sync time, switch to auto, and aggressively re-upload schedules
+            start_id, auto_cmds = generators.generate_light_enable_auto_mode_sequence(start_id)
+            commands_to_send.extend(auto_cmds)
+
+            for sched_dict in coord.entry.options.get("schedules", []):
+                try:
+                    from .domain.light.status import LightSchedule
+
+                    sched = LightSchedule.from_dict(sched_dict)
+                    sunrise = datetime.time(sched.sunrise_hour, sched.sunrise_minute)
+                    sunset = datetime.time(sched.sunset_hour, sched.sunset_minute)
+                    weekdays = sched.weekdays()
+
+                    start_id, add_cmds = generators.generate_light_add_auto_setting_sequence(
+                        start_id,
+                        sunrise,
+                        sunset,
+                        tuple(sched.channel_brightness),
+                        sched.ramp_up_minutes,
+                        weekdays=weekdays,
+                    )
+                    commands_to_send.extend(add_cmds)
+                except Exception as e:
+                    _LOGGER.warning("Failed to regenerate schedule for auto-heal: %s", e)
+
+        # Send it using the standard master/slave flow
+        await _execute_on_master_and_slaves(hass, coord, commands_to_send)
+
+    hass.bus.async_listen("aquable_clock_desync", handle_clock_desync_event)
+
     # Register all services
     hass.services.async_register(
         DOMAIN, SERVICE_SET_DOSER_SCHEDULE, handle_set_doser_schedule, schema=DOSER_SCHEDULE_SCHEMA

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import timedelta
+from datetime import datetime, timedelta
 from typing import Any
 
 from bleak import BleakClient
@@ -74,6 +74,16 @@ def _process_light_packets(packets: list[bytes], num_channels: int = 0) -> Light
         if parsed is not None:
             return parsed
     return None
+
+
+def _detect_clock_drift(status_hour: int | None, status_minute: int | None) -> int:
+    """Calculate the absolute clock drift in minutes, handling midnight wrapping."""
+    if status_hour is None or status_minute is None:
+        return 0
+    now = datetime.now()
+    device_mins = status_hour * 60 + status_minute
+    real_mins = now.hour * 60 + now.minute
+    return min(abs(device_mins - real_mins), 1440 - abs(device_mins - real_mins))
 
 
 class AquaBleCoordinator(DataUpdateCoordinator[DoserStatus | LightStatus]):
@@ -198,6 +208,18 @@ class AquaBleCoordinator(DataUpdateCoordinator[DoserStatus | LightStatus]):
         # Process the collected packets outside the BLE connection context.
         if self.device_type == DEVICE_TYPE_DOSER:
             status = _process_doser_packets(received_packets)
+            if status is not None:
+                drift = _detect_clock_drift(status.hour, status.minute)
+                if drift > 2:
+                    _LOGGER.warning(
+                        "Doser %s clock drifted by %d mins (Device: %02d:%02d). " \
+                        "Triggering auto-heal.",
+                        self.address,
+                        drift,
+                        status.hour or 0,
+                        status.minute or 0,
+                    )
+                    self.hass.bus.async_fire("aquable_clock_desync", {"address": self.address})
         else:
             status = _process_light_packets(received_packets, num_channels=self.num_channels)
             stored_schedules: list[LightSchedule] = []
@@ -213,6 +235,20 @@ class AquaBleCoordinator(DataUpdateCoordinator[DoserStatus | LightStatus]):
                 # Hardware 0xFE telemetry confirms device clock and connection.
                 if stored_schedules:
                     status.schedules = stored_schedules
+
+                # Auto-Heal: detect clock drift and trigger recovery
+                drift = _detect_clock_drift(status.hour, status.minute)
+                if drift > 2:
+                    _LOGGER.warning(
+                        "Light %s clock drifted by %d mins (Device: %02d:%02d). " \
+                        "Triggering auto-heal.",
+                        self.address,
+                        drift,
+                        status.hour or 0,
+                        status.minute or 0,
+                    )
+                    self.hass.bus.async_fire("aquable_clock_desync", {"address": self.address})
+
             elif received_packets:
                 # Fallback to keep stored schedule state (or empty state) if 0xFE is missing
                 # e.g. WRGB II Pro v21 only sends 0x0A on handshake, never 0xFE
