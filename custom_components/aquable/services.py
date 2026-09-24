@@ -243,8 +243,17 @@ async def _execute_on_master_and_slaves(
     commands: list[bytearray],
 ) -> None:
     """Execute commands on the master and mirror them to any configured slave devices."""
-    await _async_execute_commands(hass, master_coord.address, commands)
-    await master_coord.async_request_refresh()
+    
+    def _generic_verifier(coord: AquaBleCoordinator) -> bool:
+        """Generic network-level verifier: assumes success if the immediate telemetry poll works."""
+        return coord.last_update_success
+
+    # Execute on master with verification
+    success = await _async_execute_with_verification(
+        hass, master_coord, commands, _generic_verifier
+    )
+    if not success:
+        raise HomeAssistantError(f"Failed to verify command execution on {master_coord.address}")
 
     if not master_coord.entry:
         return
@@ -268,8 +277,12 @@ async def _execute_on_master_and_slaves(
                 new_options["schedules"] = master_schedules
                 hass.config_entries.async_update_entry(slave_coord.entry, options=new_options)
 
-            await _async_execute_commands(hass, slave_coord.address, commands)
-            await slave_coord.async_request_refresh()
+            # Execute on slave with verification
+            slave_success = await _async_execute_with_verification(
+                hass, slave_coord, commands, _generic_verifier
+            )
+            if not slave_success:
+                _LOGGER.warning("Failed to verify sync commands on slave light %s", slave_id)
         except Exception as e:
             _LOGGER.warning("Failed to sync commands to slave light %s: %s", slave_id, e)
 
