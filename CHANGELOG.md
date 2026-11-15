@@ -4,7 +4,7 @@ All notable changes to AquaBle are documented here.
 
 ---
 
-## [v4.1.0] — Unreleased
+## [v4.1.0] — 2026-11-15
 
 **Light master/slave sync, decimal doser targets, and schedule fixes.**
 
