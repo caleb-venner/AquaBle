@@ -265,7 +265,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
 
     async def handle_set_doser_schedule(call: ServiceCall) -> None:
         coord = _get_coordinator(hass, call.data["device_id"])
-        volume_tenths_ml = int(call.data["volume_ml"] * 10)
+        volume_tenths_ml = round(call.data["volume_ml"] * 10)
 
         _, commands = generators.generate_doser_set_daily_dose_sequence(
             start_msg_id=(0, 0),
@@ -275,19 +275,31 @@ async def async_setup_services(hass: HomeAssistant) -> None:
             minute=call.data["minute"],
             weekdays=call.data.get("weekdays"),
         )
-        await _execute_on_master_and_slaves(hass, coord, commands)
+        await _async_execute_commands(hass, coord.address, commands)
+
+        # The doser only reports targets back in whole mL (0.5 mL reads as 0),
+        # so persist the exact value sent for the target dose sensor to use.
+        if coord.entry:
+            new_options = dict(coord.entry.options)
+            doser_targets = dict(new_options.get("doser_targets", {}))
+            doser_targets[str(call.data["head_index"])] = volume_tenths_ml
+            new_options["doser_targets"] = doser_targets
+            hass.config_entries.async_update_entry(coord.entry, options=new_options)
+
+        await coord.async_request_refresh()
 
 
     async def handle_doser_manual_dose(call: ServiceCall) -> None:
         coord = _get_coordinator(hass, call.data["device_id"])
-        volume_tenths_ml = int(call.data["volume_ml"] * 10)
+        volume_tenths_ml = round(call.data["volume_ml"] * 10)
 
         _, commands = generators.generate_doser_manual_dose_sequence(
             start_msg_id=(0, 0),
             head_index=call.data["head_index"],
             volume_tenths_ml=volume_tenths_ml,
         )
-        await _execute_on_master_and_slaves(hass, coord, commands)
+        await _async_execute_commands(hass, coord.address, commands)
+        await coord.async_request_refresh()
 
 
     async def handle_light_manual_mode(call: ServiceCall) -> None:

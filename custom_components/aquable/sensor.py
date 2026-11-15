@@ -111,9 +111,26 @@ class DoserTargetDoseSensor(AquaBleEntity, SensorEntity):  # pyright: ignore[rep
             self._attr_native_value = None
             return
         try:
-            self._attr_native_value = float(data.tail_targets[self.head_idx - 1])
+            device_ml = data.tail_targets[self.head_idx - 1]
         except IndexError:
             self._attr_native_value = None
+            return
+
+        # Firmware reports the target in whole mL, dropping decimals. Prefer the
+        # exact target last sent from HA while it still agrees with the device
+        # (it won't if the schedule was changed from the vendor app).
+        stored_tenths = None
+        if self.coordinator.entry:
+            stored_tenths = self.coordinator.entry.options.get("doser_targets", {}).get(
+                str(self.head_idx)
+            )
+        if stored_tenths is not None and device_ml in (
+            stored_tenths // 10,
+            (stored_tenths + 5) // 10,
+        ):
+            self._attr_native_value = stored_tenths / 10
+        else:
+            self._attr_native_value = float(device_ml)
 
     def _handle_coordinator_update(self) -> None:
         self._update_native_value()

@@ -81,7 +81,7 @@ Responses sent as BLE notifications from the device adopt the `0x5B` header:
 | `1` | **Protocol / Version** | `uint8` | Firmware / protocol version identifier (e.g. `0x01`, `0x06`, `0x17`, `0x1B`). |
 | `2` | **Payload Length** | `uint8` | Length of payload + header fields. |
 | `3 .. 4` | **Message ID Echo** | `uint16_be` | Echoes the sequence message ID. |
-| `5` | **Response Mode** | `uint8` | Identifies notification structure (`0x0A` = ACK/battery, `0xFE` = Schedule snapshot, `0x1E` = Lifetime totals, `0x0B` = Fan telemetry, `0x22` = Target ACK). |
+| `5` | **Response Mode** | `uint8` | Identifies notification structure (`0x0A` = ACK/battery, `0xFE` = Schedule snapshot, `0x1E` = Lifetime totals, `0x0B` = Fan telemetry, `0x22` = Doser scheduled dosed-today totals). |
 | `6 .. n-2` | **Payload Body** | `bytes` | Telemetry or configuration payload. |
 | `n-1` | **Trailer / Checksum** | `uint8` | XOR checksum (or opaque status byte depending on response mode). |
 
@@ -266,7 +266,7 @@ sequenceDiagram
     App->>Doser: 4. Prepare Stage 1 (0xA5, 0x04, [0x04])
     Doser-->>App: Telemetry: 0x1E (Lifetime Totals)
     App->>Doser: 5. Prepare Stage 2 (0xA5, 0x04, [0x05])
-    Doser-->>App: Telemetry: 0x22 (Target Dose ACK)
+    Doser-->>App: Telemetry: 0x22 (Scheduled Dosed-Today Totals)
     App->>Doser: 6. Select & Activate Head (0xA5, 0x20, [head, 0x00, active_flag])
     App->>Doser: 7. Set Head Dose & Weekdays (0xA5, 0x1B / 0x1C, [head, mask, mode, repeat, 0x00, dose...])
     App->>Doser: 8. Set Head Schedule Time (0xA5, 0x15, [head, 0x00, hour, minute, 0x00, 0x00])
@@ -286,7 +286,7 @@ sequenceDiagram
 
 #### Step 5: Configuration Prepare Stage 2 (`0xA5 / 0x04 / [0x05]`)
 - Frame: `A5 01 06 [msg_hi] [msg_lo] 04 05 [chk]`
-- Finalises write authorisation; triggers `0x22` notification.
+- Finalises write authorisation; triggers `0x22` notification (scheduled dosed-today totals, see below).
 
 #### Step 6: Head Selection & Activation (`0xA5 / 0x20`)
 - Frame: `A5 01 08 [msg_hi] [msg_lo] 20 [head_index] 00 [active_flag] [chk]`
@@ -321,6 +321,10 @@ Example for Head 0 dispensing $2.0\text{ mL}$ (20 tenths $\rightarrow \text{high
 A5 01 0A 00 06 1B 00 00 00 00 14 02
 ```
 
+> **Counters:** A manual dose is **not** counted as dosed today. It does not change the `0xFE` head offsets `7..8` or the `0x22` totals. It **is** added to the lifetime total reported in `0x1E`. (Firmware: sub-command byte `0x00` skips the today counter `+0x60` and only adds to lifetime `+0x64`.)
+>
+> To detect a manual dose, compare `0x1E` lifetime totals between reads. Example from captures on 2026-10-12: between 09:59 and 10:05, Head 1's lifetime total rose from 6181.8 to 6189.8 mL (+8.0 mL). Its dosed-today stayed 0.0 in both `0xFE` and `0x22`.
+
 ---
 
 ### Doser Telemetry & Status Decoding
@@ -331,7 +335,7 @@ Returned following `0x5A / 0x04`:
 - Reports hardware protocol version (`0x06`), battery level (`0x64` = 100%), and internal clock counter.
 
 #### 2. Head Schedule & Daily Dosed Snapshot (`0x5B / 0xFE` - 50 Bytes)
-Pushed on initial connection; contains live daily totals, scheduled execution times, and operating modes:
+Pushed on initial connection. The per-head blocks are the **source of truth for each head's configured schedule** (operating mode and run time) and also carry the scheduled volume dosed today:
 
 ```text
 5B 06 30 00 01 FE 05 16 2B [Head 1..4 Blocks (36 bytes)] [Tail (5 bytes)] [chk]
@@ -354,10 +358,10 @@ Pushed on initial connection; contains live daily totals, scheduled execution ti
     - `0x04`: `Disabled`
   - Offset `1`: Scheduled execution hour (`0 .. 23`)
   - Offset `2`: Scheduled execution minute (`0 .. 59`)
-  - Offsets `3..6`: 4 bytes auxiliary schedule metadata / interval flags
-  - Offsets `7..8`: Big-endian **Volume dosed today in tenths of a mL** (`(byte7 << 8) | byte8`)
+  - Offsets `3..6`: 4 bytes of additional schedule data (the upper 16 bits of the head's 2nd and 3rd schedule words; zero in `Daily` mode)
+  - Offsets `7..8`: Big-endian **scheduled volume dosed today in tenths of a mL** (`(byte7 << 8) | byte8`). Same value as `0x22`; manual doses are not included. Resets at midnight.
 - **Bytes `45 .. 49`**: **5-Byte Status Tail**:
-  - Offsets `45..48`: Target dose volume in tenths of a mL for Heads 1 to 4 (1 byte per head)
+  - Offsets `45..48`: Configured daily target volume for Heads 1 to 4 in **whole mL, decimals truncated** (1 byte per head; firmware: `target_ticks / 10000`). A 0.5 mL target reads as `0`; 2.5 mL reads as `2`.
   - Offset `49`: Hardware tail status flag
 
 #### 3. Lifetime Total Volume Dosed (`0x5B / 0x1E` - 15 Bytes)
@@ -377,6 +381,24 @@ Pushed in response to Prepare Stage 1 (`0xA5 / 0x04 / [0x04]`):
   - Head 2: `(byte[8] << 8) | byte[9]`
   - Head 3: `(byte[10] << 8) | byte[11]`
   - Head 4: `(byte[12] << 8) | byte[13]`
+- Byte `14`: XOR Checksum
+- Includes **both** scheduled and manual doses. (The app requests it via `getDosedFromDevice` and stores it as `total_dosed`.)
+
+#### 4. Scheduled Dosed-Today Totals (`0x5B / 0x22` - 15 Bytes)
+Pushed in response to Prepare Stage 2 (`0xA5 / 0x04 / [0x05]`); the Chihiros app requests it this way (`getDosedInDayFromDevice`) and stores it as `dose_use_in_day`. The firmware also appears to push it unprompted after a dose run (unconfirmed). Use it to confirm that a configured schedule has dosed.
+
+```text
+5B 01 0A 00 01 22 00 50 00 32 00 00 00 00 4A
+```
+
+- Byte `0`: `0x5B`
+- Byte `1`: Version (`0x01`)
+- Byte `2`: Length (`0x0A` / 10 bytes)
+- Bytes `3..4`: Sequence Message ID
+- Byte `5`: Response Mode `0x22`
+- Bytes `6..13`: **4 $\times$ 16-bit Big-Endian Unsigned Integers**: volume dosed today **by configured schedules** in tenths of a mL (Heads 1 to 4). The example above is Head 1 = 8.0 mL, Head 2 = 5.0 mL.
+  - **Manual doses are not counted** (they only update the `0x1E` lifetime totals).
+  - Same source as `0xFE` head offsets `7..8` (firmware today counter `+0x60`). Resets at midnight.
 - Byte `14`: XOR Checksum
 
 ---
@@ -447,6 +469,6 @@ The Chihiros Doctor (algae inhibitor / steriliser) uses family code `0xA5`:
 | `0x5B` | `0x0A` | 10 | Device $\rightarrow$ Host | Handshake ACK, hardware battery level, and runtime counter. |
 | `0x5B` | `0x0B` | 11 | Device $\rightarrow$ Host | Fan telemetry notification (measured RPM, temperature in °C, uptime). |
 | `0x5B` | `0x1E` | 30 | Device $\rightarrow$ Host | Doser lifetime total dosed volume for all 4 heads (15 bytes). |
-| `0x5B` | `0x22` | 34 | Device $\rightarrow$ Host | Doser target configuration ACK. |
+| `0x5B` | `0x22` | 34 | Device $\rightarrow$ Host | Doser scheduled dosed-today totals for all 4 heads (15 bytes; excludes manual doses). |
 | `0x5B` | `0xFE` | 254 | Device $\rightarrow$ Host | Full status snapshot (Light: schedules / Doser: daily dosed & head modes). |
 

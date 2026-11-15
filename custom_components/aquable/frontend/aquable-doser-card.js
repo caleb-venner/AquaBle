@@ -182,7 +182,9 @@ class AquaBleDoserCard extends LitElement {
         ...this._headConfigs,
         [headIdx]: {
           ...this._headConfigs[headIdx],
-          targetVolume: head.targetDose || this._headConfigs[headIdx].targetVolume,
+          // A 0 reading means disabled or unknown, not a real target: keep the
+          // form's current value instead of overwriting it.
+          targetVolume: head.targetDose > 0 ? head.targetDose : this._headConfigs[headIdx].targetVolume,
           hour: isNaN(h) ? 8 : h,
           minute: isNaN(m) ? 0 : m,
         },
@@ -257,7 +259,12 @@ class AquaBleDoserCard extends LitElement {
         : [config.hour, config.minute];
 
       // To deactivate, set target volume to 0. To activate, set to configured target volume.
-      const targetVolume = activate ? (config.targetVolume || 5.0) : 0.0;
+      const targetVolume = activate ? config.targetVolume : 0.0;
+      if (activate && !(targetVolume > 0)) {
+        // Never substitute a default volume: activating with a made-up dose is worse than failing.
+        console.error(`Cannot activate head ${headIdx}: no daily target dose configured.`);
+        return;
+      }
 
       await this.hass.callService(DOMAIN, DOSER_SERVICES.SET_SCHEDULE, {
         device_id: deviceId,
@@ -280,6 +287,10 @@ class AquaBleDoserCard extends LitElement {
     try {
       const deviceId = this._deviceId;
       const config = this._headConfigs[headIdx];
+      if (!Number.isFinite(config.targetVolume) || config.targetVolume < 0) {
+        console.error(`Cannot save head ${headIdx} schedule: invalid target dose ${config.targetVolume}.`);
+        return;
+      }
 
       await this.hass.callService(DOMAIN, DOSER_SERVICES.SET_SCHEDULE, {
         device_id: deviceId,

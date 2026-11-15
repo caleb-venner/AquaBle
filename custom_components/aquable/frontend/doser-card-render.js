@@ -117,7 +117,7 @@ function renderHeadsTab(card) {
                 type="number"
                 class="custom-dose-input"
                 min="0.1"
-                step="0.5"
+                step="0.1"
                 placeholder="mL"
                 .value=${card._manualDoseAmounts[head.index] || ""}
                 @change=${(e) => card._setCustomDoseAmount(head.index, parseFloat(e.target.value))}
