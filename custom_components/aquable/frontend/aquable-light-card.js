@@ -165,7 +165,8 @@ class AquaBleLightCard extends LitElement {
       sunriseMinute: partsSunrise[1] ?? 0,
       sunsetHour: partsSunset[0] ?? 20,
       sunsetMinute: partsSunset[1] ?? 0,
-      rampMinutes: sched.ramp_up_minutes ?? 30,
+      // Older schedules may have a 0-minute ramp; the service now requires >= 1.
+      rampMinutes: Math.max(1, sched.ramp_up_minutes ?? 30),
       weekdays: weekdays,
       channels: [...channels],
     };

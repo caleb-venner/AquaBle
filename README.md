@@ -15,6 +15,7 @@ AquaBle is built on a robust, **stateless functional architecture**. Rather than
 - **Native HA Bluetooth**: Utilises Home Assistant's native Bluetooth stack, ESPHome Bluetooth Proxies, and local Bluetooth adapters with automated reconnects.
 - **Interactive 24-Hour Ramp Curves**: Custom SVG curve visualiser showing sunrise, peak hold, sunset, and moonlight transitions with live time tracking.
 - **Visual Schedule Management**: Add, click-to-edit, and delete individual light schedule slots or clear schedules directly from dashboard cards.
+- **Light Sync**: Keep several lights of the same model in step by mirroring one master light's schedules and commands to the others.
 - **Autonomous Doser Scheduling**: Configure per-head targets, execution times, and weekday recurrence directly to the pump microcontroller.
 - **4-Head Doser Monitoring**: Real-time progress bars showing volume dosed today versus daily target, per-head active toggles, and manual quick-dosing buttons.
 - **Zero-Poll Local Interpolation**: Real-time channel brightness sensors calculated locally without battery or Bluetooth bandwidth drain.
@@ -148,6 +149,26 @@ entity: sensor.chihiros_doser_head_1_dosed_today
 3. Click **Configure** on the discovered device card (or click **+ Add Integration**, search for **AquaBle**, and select your device).
 4. Complete the configuration wizard.
 
+### Light Sync (optional)
+
+If you have several lights of the same model over one tank, you can keep them in step by making one light the **master** and the others its **slaves**.
+
+1. Go to **Settings** → **Devices & Services** → **AquaBle**.
+2. On the master light's entry, click **Configure**.
+3. Under **Synchronise with these lights**, select the lights to keep in sync, then **Submit**.
+
+From then on, anything sent to the master is repeated on each selected light:
+
+- adding, editing, deleting and clearing schedules (the master's stored schedules are also copied to the slaves)
+- manual brightness (`aquable.light_set_manual_mode`)
+- mode changes (`aquable.light_set_mode`)
+
+**Notes:**
+- **Lights only.** Dosing pumps can't be synced and have no **Configure** option.
+- **Same model only.** Only lights of the same model as the master are offered.
+- **One direction.** Send commands to the master. Commands sent directly to a slave are not copied back to the master or to the other slaves.
+- If a slave is out of range when a command is sent, that slave is skipped and a warning is logged. The master is still updated.
+
 ---
 
 ## Actions / Services (Automation Reference)
@@ -162,7 +183,7 @@ Use these Home Assistant Actions (Services) in your Automations and Scripts for 
 
 ### Light Actions
 - **`aquable.light_set_auto_schedule`**: Add a new schedule slot or update an existing schedule slot (when providing `schedule_index`).
-  - Parameters: `device_id`, `schedule_index` (optional, 0-based), `sunrise_hour`, `sunrise_minute`, `sunset_hour`, `sunset_minute`, `ramp_up_minutes`, `red`, `green`, `blue`, `white`, `weekdays`.
+  - Parameters: `device_id`, `schedule_index` (optional, 0-based), `sunrise_hour`, `sunrise_minute`, `sunset_hour`, `sunset_minute`, `ramp_up_minutes` (1–180), `red`, `green`, `blue`, `white`, `weekdays`.
 - **`aquable.light_delete_auto_schedule`**: Delete a specific schedule slot from hardware memory and configuration storage.
   - Parameters: `device_id`, `schedule_index` (0-based).
 - **`aquable.light_set_manual_mode`**: Override schedules with static PWM brightness levels.

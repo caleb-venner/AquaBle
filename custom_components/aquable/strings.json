@@ -22,6 +22,17 @@
       "no_devices_found": "No supported AquaBle devices found nearby"
     }
   },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Light sync",
+        "description": "Choose other lights of the same model to keep in sync with this one. Commands and schedules sent to this light are also sent to the selected lights.",
+        "data": {
+          "sync_devices": "Synchronise with these lights"
+        }
+      }
+    }
+  },
   "entity": {
     "sensor": {
       "dosed_today": {

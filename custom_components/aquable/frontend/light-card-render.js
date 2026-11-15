@@ -270,7 +270,7 @@ function renderAddTab(card) {
       <div class="slider-row">
         <span class="slider-label">Ramp Duration</span>
         <ha-slider
-          min="0"
+          min="5"
           max="120"
           step="5"
           pin

@@ -4,6 +4,33 @@ All notable changes to AquaBle are documented here.
 
 ---
 
+## [v4.1.0] — Unreleased
+
+**Light master/slave sync, decimal doser targets, and schedule fixes.**
+
+**Feat:**
+- **Light sync (master/slave):** a light can now mirror its commands to other lights of the same model. Set it up under **Configure** on the master light's AquaBle entry. Schedules, manual brightness, mode changes and schedule deletes/clears sent to the master are repeated on each selected light, and the master's stored schedules are copied to them. Lights only; dosers are not synced. See [Light Sync](README.md#light-sync-optional).
+- Pushing a light schedule now also syncs the light's clock and switches it to auto mode, so a new schedule runs straight away.
+- Added translations (`translations/en.json`), so the config flow, the light sync options screen and the "refresh your browser" repair issue show proper text instead of raw keys.
+
+**Fix:**
+- **Doser decimal targets (#9):** a daily target such as 0.5 mL read back as 0, and the doser card then fell back to 5 mL. The pump only reports targets in whole mL, so AquaBle now stores the exact target it sends and the Target Dose sensor shows it while it still agrees with the pump. If the target is changed in the Chihiros app, the sensor falls back to the pump's value.
+  - Targets set before this update show the whole-mL value until they are saved again from Home Assistant.
+- **Doser card:** no longer replaces a 0 reading with a 5 mL default when editing or re-enabling a head, and refuses to save a blank or negative target.
+- **Doser card:** the manual dose input now accepts 0.1 mL steps (e.g. 0.3 mL was previously rejected).
+- Doser volumes are rounded rather than truncated when converted to tenths of a mL.
+- Lights that never send the `0xFE` status packet (e.g. WRGB II Pro firmware v21) no longer fail setup on a fresh install (#5).
+- Deleting a light schedule now sends the schedule's stored ramp time, so the delete matches the slot on the light.
+
+**Changed:**
+- Light schedule ramp time now has a **minimum of 1 minute** (was 0) in `aquable.light_set_auto_schedule`. Existing schedules with a 0-minute ramp can still be deleted, and get 1 minute when edited.
+- The light card's ramp slider now starts at 5 minutes.
+
+**Docs:**
+- `BLE_Protocol.md`: the `0xFE` tail target is whole mL (truncated), not tenths; `0x22` is the scheduled dosed-today totals, not a target ACK; added notes on how manual doses are counted.
+
+---
+
 ## [v4.0.3] — 2026-08-31
 
 **Improve light device command & control logic.**

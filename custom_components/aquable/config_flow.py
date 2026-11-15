@@ -27,7 +27,13 @@ except ImportError:
     from homeassistant.data_entry_flow import FlowResult as ConfigFlowResult
 from homeassistant.const import CONF_ADDRESS, CONF_NAME
 
-from .const import CONF_DEVICE_TYPE, DEVICE_REGISTRY, DOMAIN, DeviceModelInfo
+from .const import (
+    CONF_DEVICE_TYPE,
+    DEVICE_REGISTRY,
+    DEVICE_TYPE_DOSER,
+    DOMAIN,
+    DeviceModelInfo,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -161,6 +167,12 @@ class AquaBleConfigFlow(ConfigFlow, domain=DOMAIN):
     def async_get_options_flow(config_entry):
         """Get the options flow for this handler."""
         return AquaBleOptionsFlowHandler(config_entry)
+
+    @classmethod
+    @callback
+    def async_supports_options(cls, config_entry) -> bool:
+        """Only lights have options (master/slave sync); hide Configure for dosers."""
+        return config_entry.data.get(CONF_DEVICE_TYPE) != DEVICE_TYPE_DOSER
 
 
 class AquaBleOptionsFlowHandler(OptionsFlow):

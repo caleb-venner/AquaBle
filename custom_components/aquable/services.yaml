@@ -211,11 +211,11 @@ light_set_auto_schedule:
           mode: box
     ramp_up_minutes:
       name: Ramp up time (minutes)
-      description: Duration to fade from 0 to target brightness
+      description: Duration to fade from 0 to target brightness (minimum 1 minute)
       required: false
       selector:
         number:
-          min: 0
+          min: 1
           max: 180
           mode: box
     white:

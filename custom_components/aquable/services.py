@@ -19,7 +19,7 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 
 from .commands import encoder, generators
-from .const import DOMAIN, DeviceModelInfo
+from .const import DEVICE_TYPE_DOSER, DOMAIN, DeviceModelInfo
 from .coordinator import UART_TX_UUID, AquaBleCoordinator
 from .domain.light.status import LightSchedule
 
@@ -89,9 +89,8 @@ LIGHT_DELETE_AUTO_SCHEMA = vol.Schema(
         vol.Optional("sunrise_minute"): vol.All(vol.Coerce(int), vol.Range(min=0, max=59)),
         vol.Optional("sunset_hour"): vol.All(vol.Coerce(int), vol.Range(min=0, max=23)),
         vol.Optional("sunset_minute"): vol.All(vol.Coerce(int), vol.Range(min=0, max=59)),
-        vol.Optional("ramp_up_minutes", default=1): vol.All(
-            vol.Coerce(int), vol.Range(min=1, max=180)
-        ),
+        # min 0 so schedules stored before the 1-minute minimum can still be deleted.
+        vol.Optional("ramp_up_minutes"): vol.All(vol.Coerce(int), vol.Range(min=0, max=180)),
         vol.Optional("weekdays"): cv.ensure_list,
     }
 )
@@ -209,17 +208,19 @@ def _extract_channel_levels(
     return [red, green, blue, white]
 
 
-
 async def _execute_on_master_and_slaves(
     hass: HomeAssistant,
     master_coord: AquaBleCoordinator,
     commands: list[bytearray],
 ) -> None:
-    """Execute commands on the master and mirror them to any configured slave devices."""
+    """Execute commands on the master light and mirror them to any configured slave lights.
+
+    Sync is for lights only; dosers are never mirrored.
+    """
     await _async_execute_commands(hass, master_coord.address, commands)
     await master_coord.async_request_refresh()
 
-    if not master_coord.entry:
+    if not master_coord.entry or master_coord.device_type == DEVICE_TYPE_DOSER:
         return
 
     slave_device_ids = master_coord.entry.options.get("sync_devices", [])
@@ -256,6 +257,7 @@ async def _execute_on_master_and_slaves(
         except Exception as e:
             _LOGGER.warning("Failed to sync commands to slave light %s: %s", slave_id, e)
 
+
 async def async_setup_services(hass: HomeAssistant) -> None:
     """Register custom services for AquaBle."""
 
@@ -288,7 +290,6 @@ async def async_setup_services(hass: HomeAssistant) -> None:
 
         await coord.async_request_refresh()
 
-
     async def handle_doser_manual_dose(call: ServiceCall) -> None:
         coord = _get_coordinator(hass, call.data["device_id"])
         volume_tenths_ml = round(call.data["volume_ml"] * 10)
@@ -301,25 +302,19 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         await _async_execute_commands(hass, coord.address, commands)
         await coord.async_request_refresh()
 
-
     async def handle_light_manual_mode(call: ServiceCall) -> None:
         coord = _get_coordinator(hass, call.data["device_id"])
-        channel_levels = _extract_channel_levels(
-            coord.model_info, coord.num_channels, call.data
-        )
+        channel_levels = _extract_channel_levels(coord.model_info, coord.num_channels, call.data)
         colors = {ch_idx: val for ch_idx, val in enumerate(channel_levels)}
         _, commands = generators.generate_light_set_brightness_sequence((0, 0), colors)
         await _execute_on_master_and_slaves(hass, coord, commands)
-
 
     async def handle_light_auto_schedule(call: ServiceCall) -> None:
         coord = _get_coordinator(hass, call.data["device_id"])
         schedule_index = call.data.get("schedule_index")
         sunrise = datetime.time(call.data["sunrise_hour"], call.data["sunrise_minute"])
         sunset = datetime.time(call.data["sunset_hour"], call.data["sunset_minute"])
-        channel_levels = _extract_channel_levels(
-            coord.model_info, coord.num_channels, call.data
-        )
+        channel_levels = _extract_channel_levels(coord.model_info, coord.num_channels, call.data)
         brightness = tuple(channel_levels)
         ramp_up_minutes = call.data["ramp_up_minutes"]
         weekdays = call.data.get("weekdays")
@@ -343,10 +338,12 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                     continue
                 old_mask = int(existing_s.get("weekday_mask", 127))
                 if new_mask & old_mask:
-                    old_start = (int(existing_s.get("sunrise_hour", 12)) * 60 +
-                                 int(existing_s.get("sunrise_minute", 0)))
-                    old_end = (int(existing_s.get("sunset_hour", 20)) * 60 +
-                               int(existing_s.get("sunset_minute", 0)))
+                    old_start = int(existing_s.get("sunrise_hour", 12)) * 60 + int(
+                        existing_s.get("sunrise_minute", 0)
+                    )
+                    old_end = int(existing_s.get("sunset_hour", 20)) * 60 + int(
+                        existing_s.get("sunset_minute", 0)
+                    )
 
                     if new_start <= old_end and new_end >= old_start:
                         raise HomeAssistantError(
@@ -368,12 +365,10 @@ async def async_setup_services(hass: HomeAssistant) -> None:
             if schedule_index is not None and 0 <= schedule_index < len(existing):
                 old_sched = existing[schedule_index]
                 old_sunrise = datetime.time(
-                    old_sched.get("sunrise_hour", 12),
-                    old_sched.get("sunrise_minute", 0)
+                    old_sched.get("sunrise_hour", 12), old_sched.get("sunrise_minute", 0)
                 )
                 old_sunset = datetime.time(
-                    old_sched.get("sunset_hour", 20),
-                    old_sched.get("sunset_minute", 0)
+                    old_sched.get("sunset_hour", 20), old_sched.get("sunset_minute", 0)
                 )
                 old_ramp = old_sched.get("ramp_up_minutes", 0)
 
@@ -413,7 +408,6 @@ async def async_setup_services(hass: HomeAssistant) -> None:
 
         await _execute_on_master_and_slaves(hass, coord, commands_to_send)
 
-
     async def handle_light_delete_auto_schedule(call: ServiceCall) -> None:
         coord = _get_coordinator(hass, call.data["device_id"])
         schedule_index = call.data.get("schedule_index")
@@ -422,7 +416,9 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         sunrise_m = call.data.get("sunrise_minute")
         sunset_h = call.data.get("sunset_hour")
         sunset_m = call.data.get("sunset_minute")
-        ramp_up_minutes = call.data.get("ramp_up_minutes", 0)
+        # No default: the delete frame must repeat the slot's exact ramp, so an
+        # omitted ramp falls back to the stored schedule's value below.
+        ramp_up_minutes = call.data.get("ramp_up_minutes")
         weekdays = call.data.get("weekdays")
 
         if coord.entry:
@@ -435,10 +431,11 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                 if sunset_h is None:
                     sunset_h = target_sched.get("sunset_hour", 20)
                     sunset_m = target_sched.get("sunset_minute", 0)
-                if ramp_up_minutes == 0 and "ramp_up_minutes" in target_sched:
+                if ramp_up_minutes is None and "ramp_up_minutes" in target_sched:
                     ramp_up_minutes = target_sched["ramp_up_minutes"]
                 if weekdays is None:
                     from .domain.light.status import LightSchedule
+
                     temp_sched = LightSchedule.from_dict(target_sched)
                     weekdays = temp_sched.weekdays()
 
@@ -455,11 +452,9 @@ async def async_setup_services(hass: HomeAssistant) -> None:
             sunrise = datetime.time(sunrise_h, sunrise_m)
             sunset = datetime.time(sunset_h, sunset_m)
             _, commands = generators.generate_light_delete_auto_setting_sequence(
-                (0, 0), sunrise, sunset, ramp_up_minutes, weekdays=weekdays
+                (0, 0), sunrise, sunset, ramp_up_minutes or 0, weekdays=weekdays
             )
             await _execute_on_master_and_slaves(hass, coord, commands)
-
-
 
     async def handle_light_set_mode(call: ServiceCall) -> None:
         coord = _get_coordinator(hass, call.data["device_id"])
@@ -477,7 +472,6 @@ async def async_setup_services(hass: HomeAssistant) -> None:
 
         await _execute_on_master_and_slaves(hass, coord, commands)
 
-
     async def handle_light_clear_schedules(call: ServiceCall) -> None:
         coord = _get_coordinator(hass, call.data["device_id"])
 
@@ -488,7 +482,6 @@ async def async_setup_services(hass: HomeAssistant) -> None:
 
         _, commands = generators.generate_light_clear_schedules_sequence((0, 0))
         await _execute_on_master_and_slaves(hass, coord, commands)
-
 
     # Register all services
     hass.services.async_register(
